@@ -57,18 +57,49 @@ See `.env.example` for all supported variables. To re-seed from env, delete
 | API key   | secret                               | stored server-side, never returned      |
 | Models    | `openai/gpt-4o-mini, ...`            | comma-separated                         |
 
+## Hermes management (control plane)
+
+Beyond chat, Hermes exposes a `/api/*` management API (models, cron jobs,
+sessions, config, env, MCP servers, webhooks, system stats, …). The app talks
+to it through **one server-side proxy** so your token never reaches the browser
+and there's no CORS:
+
+```
+browser → /api/hx/<path>  →  hermesFetch  →  <HERMES_ADMIN_URL>/api/<path>
+```
+
+`lib/hermes.ts` owns the connection + auth policy in one place:
+
+- **Loopback URL** (localhost/127.0.0.1) → Hermes serves `/api/*` without auth.
+- **Non-loopback URL** → set an auth mode (`bearer`/`cookie`) + token; the proxy
+  injects it server-side.
+
+Configure and test it on the **Hermes Control** page (`/hermes`), which also
+includes a live model switcher. Adding a new control feature (cron, sessions,
+config editor, …) is just a new method in `lib/hermesClient.ts` — no new server
+code, since everything flows through `/api/hx/*`.
+
+> Note: Hermes' inference API (`/v1/*`, used for chat) and management API
+> (`/api/*`) use **different** auth and often different ports — that's why the
+> management base URL is configured separately from the chat provider.
+
 ## Architecture
 
 ```
 app/
-  page.tsx              chat UI (provider/model picker, streaming, history)
-  settings/page.tsx     provider management
-  api/chat/route.ts     streaming proxy (keys injected server-side)
-  api/providers/...     provider CRUD + connection test
+  page.tsx                  chat UI (provider/model picker, streaming, history)
+  settings/page.tsx         provider management
+  hermes/page.tsx           Hermes Control (connection, model switcher, stats)
+  api/chat/route.ts         streaming chat proxy (keys injected server-side)
+  api/providers/...         provider CRUD + connection test
+  api/hx/[...path]/route.ts Hermes management proxy (the one pipe)
+  api/hermes/connection/... management connection config + test
 lib/
-  providers.ts          server-side registry (data/providers.json + env seed)
+  providers.ts          server-side provider registry (data/providers.json)
   connectors.ts         OpenAI + Anthropic streaming connectors
-  client.ts             browser-side stream parser
+  hermes.ts             Hermes admin client: connection, auth, hermesFetch
+  hermesClient.ts       browser-side typed client over /api/hx/*
+  client.ts             browser-side chat stream parser
   storage.ts            conversation history (localStorage)
 public/
   sw.js, manifest...    PWA assets

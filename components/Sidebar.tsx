@@ -77,7 +77,13 @@ export function Sidebar({
           ))}
         </nav>
 
-        <div className="border-t border-slate-800 p-3">
+        <div className="space-y-0.5 border-t border-slate-800 p-3">
+          <Link
+            href="/hermes"
+            className="block rounded-lg px-3 py-2 text-sm text-slate-300 hover:bg-slate-800"
+          >
+            ⚡ Hermes Control
+          </Link>
           <Link
             href="/settings"
             className="block rounded-lg px-3 py-2 text-sm text-slate-300 hover:bg-slate-800"

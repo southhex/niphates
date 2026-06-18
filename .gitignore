@@ -11,8 +11,9 @@ next-env.d.ts
 # production
 /build
 
-# runtime config & secrets (provider API keys live here)
+# runtime config & secrets (provider API keys / Hermes token live here)
 /data/providers.json
+/data/hermes.json
 .env
 .env.local
 .env*.local
