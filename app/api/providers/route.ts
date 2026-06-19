@@ -11,6 +11,7 @@ import {
   toPublic,
 } from "@/lib/providers";
 import type { Provider } from "@/lib/types";
+import { providerSchema, formatZodError } from "@/lib/schemas";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,19 +22,22 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  let p: Provider;
+  let raw: unknown;
   try {
-    p = (await req.json()) as Provider;
+    raw = await req.json();
   } catch {
     return Response.json({ error: "Invalid JSON" }, { status: 400 });
   }
-  if (!p.id || !p.name || !p.baseUrl || !p.type) {
+
+  const parsed = providerSchema.safeParse(raw);
+  if (!parsed.success) {
     return Response.json(
-      { error: "id, name, type and baseUrl are required" },
+      { error: formatZodError(parsed.error) },
       { status: 400 },
     );
   }
-  p.models = Array.isArray(p.models) ? p.models : [];
+  const p: Provider = parsed.data;
+
   // If the client sends an empty apiKey, preserve the existing one instead of
   // wiping a stored secret (the UI never receives the real key back).
   if (p.apiKey === "" || p.apiKey === undefined) {

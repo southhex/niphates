@@ -8,6 +8,7 @@ import { streamChatRequest } from "@/lib/client";
 import {
   loadConversations,
   saveConversations,
+  flushConversations,
   newConversation,
   titleFrom,
 } from "@/lib/storage";
@@ -25,13 +26,18 @@ export default function Home() {
 
   // --- Initial load ------------------------------------------------------
   useEffect(() => {
-    const convos = loadConversations();
-    setConversations(convos);
-    if (convos[0]) setActiveId(convos[0].id);
+    let cancelled = false;
+
+    loadConversations().then((convos) => {
+      if (cancelled) return;
+      setConversations(convos);
+      if (convos[0]) setActiveId(convos[0].id);
+    });
 
     fetch("/api/providers")
       .then((r) => r.json())
       .then((d: { providers: PublicProvider[] }) => {
+        if (cancelled) return;
         const enabled = d.providers.filter((p) => p.enabled !== false);
         setProviders(enabled);
         if (enabled[0]) {
@@ -39,7 +45,13 @@ export default function Home() {
           setModel(enabled[0].defaultModel || enabled[0].models[0] || "");
         }
       })
-      .catch(() => setProviders([]));
+      .catch(() => {
+        if (!cancelled) setProviders([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const active = useMemo(
@@ -158,6 +170,8 @@ export default function Home() {
 
     setStreaming(false);
     abortRef.current = null;
+    // Persist the finished turn immediately rather than waiting out the debounce.
+    void flushConversations();
   };
 
   const handleStop = () => {

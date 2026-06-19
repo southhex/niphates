@@ -31,6 +31,12 @@ export interface Provider {
   extraHeaders?: Record<string, string>;
   /** Set false to hide from the picker without deleting config. */
   enabled?: boolean;
+  /**
+   * Default max output tokens for this provider. Required by Anthropic
+   * (defaults to 4096 if unset); ignored by OpenAI-type unless the connector
+   * forwards it. A per-request value overrides this.
+   */
+  maxTokens?: number;
 }
 
 export type ChatRole = "system" | "user" | "assistant";
@@ -46,6 +52,8 @@ export interface ChatRequest {
   messages: ChatMessage[];
   /** Sampling temperature; provider default if omitted. */
   temperature?: number;
+  /** Max output tokens; overrides the provider default if set. */
+  maxTokens?: number;
 }
 
 export interface Conversation {

@@ -8,26 +8,27 @@
 import { NextRequest } from "next/server";
 import { getProvider } from "@/lib/providers";
 import { streamChat } from "@/lib/connectors";
-import type { ChatRequest } from "@/lib/types";
+import { chatRequestSchema, formatZodError } from "@/lib/schemas";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
-  let body: ChatRequest;
+  let raw: unknown;
   try {
-    body = (await req.json()) as ChatRequest;
+    raw = await req.json();
   } catch {
     return Response.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { providerId, model, messages, temperature } = body;
-  if (!providerId || !model || !Array.isArray(messages)) {
+  const parsed = chatRequestSchema.safeParse(raw);
+  if (!parsed.success) {
     return Response.json(
-      { error: "providerId, model and messages are required" },
+      { error: formatZodError(parsed.error) },
       { status: 400 },
     );
   }
+  const { providerId, model, messages, temperature, maxTokens } = parsed.data;
 
   const provider = await getProvider(providerId);
   if (!provider) {
@@ -47,6 +48,7 @@ export async function POST(req: NextRequest) {
           model,
           messages,
           temperature,
+          maxTokens,
           signal: req.signal,
         })) {
           send({ type: "delta", text: delta });

@@ -4,45 +4,31 @@
 // (the `/api/*` "control plane" exposed by the dashboard) and how to
 // authenticate to it. Everything else — the proxy route, the typed client,
 // the UI — goes through `hermesFetch`, so when auth needs to change we change
-// it here and nowhere else.
+// it (here, or in the pure ./hermesAuth helpers) and nowhere else.
 //
-// Auth model (per Hermes docs): the dashboard `/api/*` endpoints are open on a
-// loopback bind but require a session cookie / OAuth token on a non-loopback
-// bind. We capture that as an explicit, configurable policy.
+// Auth policy + loopback detection live in ./hermesAuth (pure, testable);
+// this module owns the disk persistence and the authenticated fetch.
 //
 // Server-only: never import into a client component.
 
 import "server-only";
-import { promises as fs } from "node:fs";
-import path from "node:path";
+import { createJsonStore } from "./jsonStore";
+import {
+  authHeaders,
+  isLoopbackUrl,
+  toPublicConnection,
+  type HermesAuthMode,
+  type HermesConnection,
+  type PublicHermesConnection,
+} from "./hermesAuth";
 
-const DATA_DIR = path.join(process.cwd(), "data");
-const CONFIG_PATH = path.join(DATA_DIR, "hermes.json");
-
-export type HermesAuthMode = "auto" | "none" | "bearer" | "cookie";
-
-export interface HermesConnection {
-  /** Dashboard / management base URL. Hermes' dashboard defaults to :9119. */
-  adminBaseUrl: string;
-  /**
-   * How to authenticate to `/api/*`:
-   * - "auto"   : no auth on loopback; bearer token otherwise (if present)
-   * - "none"   : never send auth
-   * - "bearer" : Authorization: Bearer <token>
-   * - "cookie" : Cookie: <token>  (paste a dashboard session cookie)
-   */
-  authMode: HermesAuthMode;
-  /** Secret token / cookie value. Stored server-side, never returned raw. */
-  token?: string;
-}
-
-/** Public (redacted) view safe to send to the browser. */
-export interface PublicHermesConnection {
-  adminBaseUrl: string;
-  authMode: HermesAuthMode;
-  hasToken: boolean;
-  isLoopback: boolean;
-}
+export {
+  isLoopbackUrl,
+  toPublicConnection,
+  type HermesAuthMode,
+  type HermesConnection,
+  type PublicHermesConnection,
+};
 
 function seedFromEnv(): HermesConnection {
   return {
@@ -52,62 +38,22 @@ function seedFromEnv(): HermesConnection {
   };
 }
 
-export function isLoopbackUrl(urlStr: string): boolean {
-  try {
-    const host = new URL(urlStr).hostname.toLowerCase();
-    return (
-      host === "localhost" ||
-      host === "127.0.0.1" ||
-      host === "::1" ||
-      host === "[::1]" ||
-      host.endsWith(".localhost")
-    );
-  } catch {
-    return false;
-  }
-}
+// data/hermes.json — seed merges *under* the stored file so new fields get
+// sane defaults for existing installs.
+const store = createJsonStore<HermesConnection>({
+  filename: "hermes.json",
+  seed: seedFromEnv,
+  merge: (seed, parsed) => ({ ...seed, ...parsed }),
+});
 
 export async function getHermesConnection(): Promise<HermesConnection> {
-  try {
-    const raw = await fs.readFile(CONFIG_PATH, "utf8");
-    const parsed = JSON.parse(raw) as Partial<HermesConnection>;
-    // Merge over the env seed so new fields get sane defaults.
-    return { ...seedFromEnv(), ...parsed } as HermesConnection;
-  } catch {
-    const seeded = seedFromEnv();
-    await fs.mkdir(DATA_DIR, { recursive: true });
-    await fs.writeFile(CONFIG_PATH, JSON.stringify(seeded, null, 2), "utf8");
-    return seeded;
-  }
+  return store.read();
 }
 
 export async function saveHermesConnection(
   conn: HermesConnection,
 ): Promise<HermesConnection> {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(CONFIG_PATH, JSON.stringify(conn, null, 2), "utf8");
-  return conn;
-}
-
-export function toPublicConnection(c: HermesConnection): PublicHermesConnection {
-  return {
-    adminBaseUrl: c.adminBaseUrl,
-    authMode: c.authMode,
-    hasToken: Boolean(c.token),
-    isLoopback: isLoopbackUrl(c.adminBaseUrl),
-  };
-}
-
-/** Resolve the auth headers to send for a given connection. */
-function authHeaders(conn: HermesConnection): Record<string, string> {
-  const loopback = isLoopbackUrl(conn.adminBaseUrl);
-  let mode = conn.authMode;
-  if (mode === "auto") mode = loopback ? "none" : conn.token ? "bearer" : "none";
-
-  if (!conn.token) return {};
-  if (mode === "bearer") return { Authorization: `Bearer ${conn.token}` };
-  if (mode === "cookie") return { Cookie: conn.token };
-  return {};
+  return store.write(conn);
 }
 
 export interface HermesFetchInit {

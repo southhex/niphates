@@ -6,12 +6,8 @@
 // the box. This module is server-only — never import it into a client component.
 
 import "server-only";
-import { promises as fs } from "node:fs";
-import path from "node:path";
 import type { Provider, PublicProvider } from "./types";
-
-const DATA_DIR = path.join(process.cwd(), "data");
-const CONFIG_PATH = path.join(DATA_DIR, "providers.json");
+import { createJsonStore } from "./jsonStore";
 
 /** Build the default provider set from environment variables. */
 function seedFromEnv(): Provider[] {
@@ -105,47 +101,38 @@ function seedFromEnv(): Provider[] {
   return providers;
 }
 
-async function ensureConfig(): Promise<Provider[]> {
-  try {
-    const raw = await fs.readFile(CONFIG_PATH, "utf8");
-    return JSON.parse(raw) as Provider[];
-  } catch {
-    const seeded = seedFromEnv();
-    await fs.mkdir(DATA_DIR, { recursive: true });
-    await fs.writeFile(CONFIG_PATH, JSON.stringify(seeded, null, 2), "utf8");
-    return seeded;
-  }
-}
+// data/providers.json — seeded from env on first run, then authoritative.
+const store = createJsonStore<Provider[]>({
+  filename: "providers.json",
+  seed: seedFromEnv,
+});
 
 export async function getProviders(): Promise<Provider[]> {
-  return ensureConfig();
+  return store.read();
 }
 
 export async function getProvider(id: string): Promise<Provider | undefined> {
-  const all = await ensureConfig();
+  const all = await store.read();
   return all.find((p) => p.id === id);
 }
 
 export async function saveProviders(providers: Provider[]): Promise<void> {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(CONFIG_PATH, JSON.stringify(providers, null, 2), "utf8");
+  await store.write(providers);
 }
 
-/** Upsert a single provider by id. */
+/** Upsert a single provider by id. Atomic read-modify-write. */
 export async function upsertProvider(provider: Provider): Promise<Provider[]> {
-  const all = await ensureConfig();
-  const idx = all.findIndex((p) => p.id === provider.id);
-  if (idx === -1) all.push(provider);
-  else all[idx] = provider;
-  await saveProviders(all);
-  return all;
+  return store.update((all) => {
+    const idx = all.findIndex((p) => p.id === provider.id);
+    if (idx === -1) return [...all, provider];
+    const next = [...all];
+    next[idx] = provider;
+    return next;
+  });
 }
 
 export async function deleteProvider(id: string): Promise<Provider[]> {
-  const all = await ensureConfig();
-  const next = all.filter((p) => p.id !== id);
-  await saveProviders(next);
-  return next;
+  return store.update((all) => all.filter((p) => p.id !== id));
 }
 
 /** Strip secrets before sending to the browser. */

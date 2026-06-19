@@ -14,6 +14,8 @@ next-env.d.ts
 # runtime config & secrets (provider API keys / Hermes token live here)
 /data/providers.json
 /data/hermes.json
+# server-side chat history
+/data/conversations.json
 .env
 .env.local
 .env*.local

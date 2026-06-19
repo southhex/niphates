@@ -1,43 +1,25 @@
 // Provider connectors: turn a provider + messages into a stream of text
-// deltas. Server-only. Both connectors normalize their upstream SSE into a
+// deltas. Server-only. Each connector normalizes its upstream SSE into a
 // single async iterator of plain text chunks so the API route stays simple.
+// SSE parsing lives in ./sse (pure + testable); this file owns the wire calls.
 
 import "server-only";
-import type { ChatMessage, Provider } from "./types";
+import type { ChatMessage, Provider, ProviderType } from "./types";
+import { sseLines, extractOpenAIDelta, extractAnthropicDelta } from "./sse";
 
 export interface StreamOptions {
   model: string;
   messages: ChatMessage[];
   temperature?: number;
+  /** Max output tokens; falls back to the provider default then a sane cap. */
+  maxTokens?: number;
   signal?: AbortSignal;
 }
 
-/** Parse an SSE byte stream into individual `data:` payload strings. */
-async function* sseLines(
-  body: ReadableStream<Uint8Array>,
-): AsyncGenerator<string> {
-  const reader = body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      // SSE events are separated by a blank line; data lines start with "data:".
-      let nl: number;
-      while ((nl = buffer.indexOf("\n")) !== -1) {
-        const line = buffer.slice(0, nl).trim();
-        buffer = buffer.slice(nl + 1);
-        if (line.startsWith("data:")) {
-          yield line.slice(5).trim();
-        }
-      }
-    }
-  } finally {
-    reader.releaseLock();
-  }
-}
+type Connector = (
+  provider: Provider,
+  opts: StreamOptions,
+) => AsyncGenerator<string>;
 
 /** OpenAI-compatible: Hermes, Ollama, OpenRouter, OpenAI, KiloCode, etc. */
 async function* openaiStream(
@@ -45,6 +27,7 @@ async function* openaiStream(
   opts: StreamOptions,
 ): AsyncGenerator<string> {
   const url = `${provider.baseUrl.replace(/\/$/, "")}/chat/completions`;
+  const maxTokens = opts.maxTokens ?? provider.maxTokens;
   const res = await fetch(url, {
     method: "POST",
     headers: {
@@ -56,6 +39,7 @@ async function* openaiStream(
       model: opts.model,
       messages: opts.messages,
       temperature: opts.temperature,
+      ...(maxTokens ? { max_tokens: maxTokens } : {}),
       stream: true,
     }),
     signal: opts.signal,
@@ -71,14 +55,8 @@ async function* openaiStream(
   for await (const payload of sseLines(res.body)) {
     if (payload === "[DONE]") return;
     if (!payload) continue;
-    try {
-      const json = JSON.parse(payload);
-      const delta: string | undefined = json?.choices?.[0]?.delta?.content;
-      if (delta) yield delta;
-    } catch {
-      // Hermes also emits custom progress events (hermes.tool.progress);
-      // ignore anything we can't parse as a content delta.
-    }
+    const delta = extractOpenAIDelta(payload);
+    if (delta) yield delta;
   }
 }
 
@@ -109,7 +87,8 @@ async function* anthropicStream(
       model: opts.model,
       system: system || undefined,
       messages,
-      max_tokens: 4096,
+      // Anthropic requires max_tokens; honor request > provider > default.
+      max_tokens: opts.maxTokens ?? provider.maxTokens ?? 4096,
       temperature: opts.temperature,
       stream: true,
     }),
@@ -125,25 +104,22 @@ async function* anthropicStream(
 
   for await (const payload of sseLines(res.body)) {
     if (!payload) continue;
-    try {
-      const json = JSON.parse(payload);
-      if (
-        json.type === "content_block_delta" &&
-        json.delta?.type === "text_delta"
-      ) {
-        yield json.delta.text as string;
-      }
-    } catch {
-      // ignore keep-alives / non-JSON
-    }
+    const delta = extractAnthropicDelta(payload);
+    if (delta) yield delta;
   }
 }
+
+// Dispatch table keyed by provider type. Add a new wire format by adding an
+// entry here; everything upstream (the chat route) stays untouched.
+const connectors: Record<ProviderType, Connector> = {
+  openai: openaiStream,
+  anthropic: anthropicStream,
+};
 
 export function streamChat(
   provider: Provider,
   opts: StreamOptions,
 ): AsyncGenerator<string> {
-  return provider.type === "anthropic"
-    ? anthropicStream(provider, opts)
-    : openaiStream(provider, opts);
+  const connector = connectors[provider.type] ?? openaiStream;
+  return connector(provider, opts);
 }
