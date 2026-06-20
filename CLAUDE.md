@@ -13,14 +13,27 @@ and Anthropic. Single-user by design: no auth, config lives in flat JSON files o
 
 ```bash
 npm install
-npm run dev      # next dev — http://localhost:3000 (service worker NOT registered)
-npm run build    # production build
-npm run start    # next start on :3000 (PWA + service worker active)
+npm run dev      # next dev — http://localhost:3000 (dev never registers the SW)
+npm run build    # production build → .next
+npm run start    # next start on :3000 (SW registers only over HTTPS/localhost — see below)
 npm run lint     # next lint (ESLint not yet configured — prompts to set up on first run)
 npm run test     # vitest run (one-shot)
 npm run test:watch
 npm run gen-icons # regenerate PWA icons from scripts/gen-icons.mjs (uses sharp)
 ```
+
+**Build directories are split by phase** (`next.config.mjs`): `next dev` writes to
+`.next-dev`; `next build`/`next start` use `.next`. This is deliberate — they used to
+share `.next`, so running dev and a prod build from the same folder let the dev
+server's on-demand recompiles overwrite the production chunks, corrupting `.next` →
+`next start` then threw at runtime and served the unstyled error page. With separate
+dirs you can run both at once: dev on 3000, prod on another port via
+`PORT=3001 npm run start` (or `npm run start -- -p 3001`).
+
+The **service worker** (`public/sw.js`) only registers in a secure context (HTTPS or
+`localhost`) on production builds. Self-hosted over plain HTTP on a LAN IP it never
+runs — no offline support; "installing" the PWA is just a home-screen shell. Use
+HTTPS (reverse proxy with a cert, or `tailscale serve`) for the full PWA.
 
 Tests use **vitest** and live in `tests/`; run a single file with
 `npx vitest run tests/sse.test.ts`. They cover the pure logic deliberately split out
