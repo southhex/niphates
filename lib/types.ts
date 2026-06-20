@@ -64,6 +64,8 @@ export interface Conversation {
   messages: ChatMessage[];
   createdAt: number;
   updatedAt: number;
+  /** Archived chats are hidden from the main list but kept on disk. */
+  archived?: boolean;
 }
 
 /** What the client is allowed to see about a provider (no secrets). */

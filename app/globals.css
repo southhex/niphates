@@ -32,10 +32,74 @@ body {
   border-radius: 9999px;
 }
 
-/* Basic readable formatting for assistant message text. */
+/* Basic readable formatting for message text. */
 .msg-content {
-  @apply whitespace-pre-wrap break-words leading-relaxed;
+  @apply break-words leading-relaxed;
 }
+
+/* Inline code (and code inside pre, reset there below). */
 .msg-content code {
   @apply rounded bg-slate-800 px-1 py-0.5 font-mono text-[0.85em];
+}
+
+/* --- Markdown rendering for assistant bubbles -------------------------- */
+.msg-content > :first-child {
+  margin-top: 0;
+}
+.msg-content > :last-child {
+  margin-bottom: 0;
+}
+.msg-content p {
+  @apply my-2;
+}
+.msg-content h1,
+.msg-content h2,
+.msg-content h3,
+.msg-content h4 {
+  @apply mb-2 mt-4 font-semibold leading-snug;
+}
+.msg-content h1 {
+  @apply text-xl;
+}
+.msg-content h2 {
+  @apply text-lg;
+}
+.msg-content h3 {
+  @apply text-base;
+}
+.msg-content ul {
+  @apply my-2 list-disc space-y-1 pl-5;
+}
+.msg-content ol {
+  @apply my-2 list-decimal space-y-1 pl-5;
+}
+.msg-content li > ul,
+.msg-content li > ol {
+  @apply my-1;
+}
+.msg-content a {
+  @apply text-amber-400 underline underline-offset-2 hover:text-amber-300;
+}
+.msg-content blockquote {
+  @apply my-2 border-l-2 border-slate-600 pl-3 text-slate-300;
+}
+.msg-content hr {
+  @apply my-4 border-slate-700;
+}
+.msg-content pre {
+  @apply my-2 overflow-x-auto rounded-lg bg-slate-950/70 p-3 text-[0.85em];
+}
+/* Code inside a fenced block: clear the inline-code chrome. */
+.msg-content pre code {
+  @apply block bg-transparent p-0 font-mono leading-relaxed;
+}
+.msg-content table {
+  @apply my-2 block w-full overflow-x-auto border-collapse text-[0.9em];
+}
+.msg-content th,
+.msg-content td {
+  @apply border border-slate-700 px-2 py-1 text-left;
+}
+.msg-content th {
+  @apply bg-slate-800/60 font-semibold;
 }
