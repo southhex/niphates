@@ -107,8 +107,21 @@ export default function Home() {
   };
 
   const handleDelete = (id: string) => {
+    // If the chat is mid-stream, abort it — the reply would have nowhere to land,
+    // and otherwise streamingId would stay stuck on a gone conversation.
+    if (streamingId === id) {
+      abortRef.current?.abort();
+      abortRef.current = null;
+      setStreamingId(null);
+    }
     const list = conversations.filter((c) => c.id !== id);
     persist(list);
+    setUnread((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
     if (activeId === id) {
       const next = list.find((c) => !c.archived) ?? list[0];
       setActiveId(next?.id ?? null);
@@ -230,8 +243,9 @@ export default function Home() {
     );
 
     setStreamingId(null);
-    // If the reply landed in a chat the user isn't currently viewing, flag it unseen.
-    if (activeIdRef.current !== id) {
+    // Flag an unseen reply only if the turn actually completed (wasn't aborted via
+    // STOP or a delete) and landed in a chat the user isn't currently viewing.
+    if (!ctrl.signal.aborted && activeIdRef.current !== id) {
       setUnread((prev) => {
         const next = new Set(prev);
         next.add(id);
