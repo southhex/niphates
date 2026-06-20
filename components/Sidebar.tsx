@@ -27,10 +27,24 @@ export function Sidebar({
 }) {
   const active = conversations.filter((c) => !c.archived);
   const archived = conversations.filter((c) => c.archived);
+  const [theme, setTheme] = useState<"obsidian" | "marble">("obsidian");
+
+  useEffect(() => {
+    const stored = localStorage.getItem("niphates-theme") as
+      | "obsidian"
+      | "marble"
+      | null;
+    if (stored) setTheme(stored);
+  }, []);
+
+  const toggleTheme = (t: "obsidian" | "marble") => {
+    setTheme(t);
+    localStorage.setItem("niphates-theme", t);
+    document.documentElement.setAttribute("data-theme", t);
+  };
 
   return (
     <>
-      {/* Mobile backdrop */}
       {open && (
         <div
           className="fixed inset-0 z-20 bg-black/50 md:hidden"
@@ -38,28 +52,38 @@ export function Sidebar({
         />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-30 flex w-72 flex-col border-r border-slate-800 bg-slate-900 transition-transform md:static md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-30 flex w-[264px] flex-col border-r border-hair bg-paneldk transition-transform md:static md:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex items-center gap-2 px-4 py-4">
-          <span className="text-xl">⚡</span>
-          <span className="font-semibold">Hermes Chat</span>
+        {/* Brand */}
+        <div className="flex items-center justify-between border-b border-hair px-4 py-3">
+          <span className="font-display text-[18px] font-semibold uppercase tracking-[0.14em] text-marble">
+            NIPHATES
+          </span>
+          <span
+            className="font-display text-[13px]"
+            style={{ color: "rgba(201,162,75,0.6)" }}
+          >
+            IV
+          </span>
         </div>
 
-        <div className="px-3">
+        {/* New dialogue */}
+        <div className="px-3 pt-3">
           <button
             onClick={onNew}
-            className="w-full rounded-lg bg-amber-500 px-3 py-2 text-sm font-semibold text-slate-950 hover:bg-amber-400"
+            className="btn-ghost-gold w-full px-3 py-2 font-mono text-[10.5px] uppercase tracking-[0.18em]"
           >
-            + New chat
+            ❯ NEW DIALOGUE
           </button>
         </div>
 
-        <nav className="mt-3 flex-1 overflow-y-auto px-2">
+        {/* Conversation list */}
+        <nav className="mt-2 flex-1 overflow-y-auto px-2 pb-2">
           {active.length === 0 && archived.length === 0 && (
-            <p className="px-2 py-4 text-sm text-slate-500">
-              No conversations yet.
+            <p className="px-2 py-4 font-mono text-[11px] text-mutedlo">
+              No dialogues yet.
             </p>
           )}
 
@@ -77,11 +101,11 @@ export function Sidebar({
 
           {archived.length > 0 && (
             <details className="mt-2 group/arch">
-              <summary className="cursor-pointer list-none px-2 py-2 text-xs font-medium uppercase tracking-wide text-slate-500 hover:text-slate-300">
+              <summary className="cursor-pointer list-none border-t border-hair px-2 py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted hover:text-parch">
                 <span className="inline-block transition group-open/arch:rotate-90">
                   ▸
                 </span>{" "}
-                Archived ({archived.length})
+                ARCHIVED · {archived.length}
               </summary>
               <div className="mt-1">
                 {archived.map((c) => (
@@ -100,19 +124,44 @@ export function Sidebar({
           )}
         </nav>
 
-        <div className="space-y-0.5 border-t border-slate-800 p-3">
+        {/* Footer */}
+        <div className="space-y-0.5 border-t border-hair p-3">
           <Link
             href="/hermes"
-            className="block rounded-lg px-3 py-2 text-sm text-slate-300 hover:bg-slate-800"
+            className="block px-3 py-2 font-mono text-[11px] uppercase tracking-[0.16em] text-parch hover:bg-panel hover:text-marble"
           >
-            ⚡ Hermes Control
+            ⚡ CONTROL
           </Link>
           <Link
             href="/settings"
-            className="block rounded-lg px-3 py-2 text-sm text-slate-300 hover:bg-slate-800"
+            className="block px-3 py-2 font-mono text-[11px] uppercase tracking-[0.16em] text-parch hover:bg-panel hover:text-marble"
           >
-            ⚙ Settings
+            ⚙ SETTINGS
           </Link>
+
+          {/* Theme toggle */}
+          <div className="mt-2 flex border border-hair">
+            <button
+              onClick={() => toggleTheme("obsidian")}
+              className={`flex-1 px-2 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] transition-colors ${
+                theme === "obsidian"
+                  ? "bg-gold text-goldink"
+                  : "text-muted hover:text-marble"
+              }`}
+            >
+              ☾ OBSIDIAN
+            </button>
+            <button
+              onClick={() => toggleTheme("marble")}
+              className={`flex-1 border-l border-hair px-2 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] transition-colors ${
+                theme === "marble"
+                  ? "bg-gold text-goldink"
+                  : "text-muted hover:text-marble"
+              }`}
+            >
+              ☀ MARBLE
+            </button>
+          </div>
         </div>
       </aside>
     </>
@@ -136,8 +185,8 @@ function ChatRow({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const isActive = c.id === activeId;
 
-  // Close the menu on any outside click / Escape.
   useEffect(() => {
     if (!menuOpen) return;
     const onDocClick = (e: MouseEvent) => {
@@ -166,20 +215,22 @@ function ChatRow({
   return (
     <div
       ref={ref}
-      className={`group relative flex items-center gap-1 rounded-lg px-2 ${
-        c.id === activeId ? "bg-slate-800" : "hover:bg-slate-800/60"
+      className={`group relative flex items-center gap-1 border-l-2 px-2 ${
+        isActive
+          ? "border-gold bg-panel text-marble"
+          : "border-transparent text-muted hover:text-parch"
       }`}
     >
       <button
         onClick={() => onSelect(c.id)}
-        className="flex-1 truncate py-2 text-left text-sm text-slate-200"
+        className="flex-1 truncate py-2 text-left font-mono text-[12.5px]"
         title={c.title}
       >
         {c.title}
       </button>
       <button
         onClick={() => setMenuOpen((v) => !v)}
-        className={`px-1 text-slate-500 transition hover:text-slate-200 ${
+        className={`px-1 text-muted transition hover:text-marble ${
           menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"
         }`}
         aria-label="Conversation options"
@@ -192,7 +243,7 @@ function ChatRow({
       {menuOpen && (
         <div
           role="menu"
-          className="absolute right-1 top-9 z-40 w-36 overflow-hidden rounded-lg border border-slate-700 bg-slate-800 py-1 text-sm shadow-lg"
+          className="absolute right-1 top-9 z-40 w-36 overflow-hidden border border-hairlit bg-panel py-1 text-sm shadow-lg"
         >
           {c.archived ? (
             <button
@@ -201,9 +252,9 @@ function ChatRow({
                 setMenuOpen(false);
                 onUnarchive(c.id);
               }}
-              className="block w-full px-3 py-1.5 text-left text-slate-200 hover:bg-slate-700"
+              className="block w-full px-3 py-1.5 text-left font-mono text-[12px] uppercase tracking-[0.1em] text-parchdk hover:bg-panel2"
             >
-              Unarchive
+              UNARCHIVE
             </button>
           ) : (
             <button
@@ -212,17 +263,17 @@ function ChatRow({
                 setMenuOpen(false);
                 onArchive(c.id);
               }}
-              className="block w-full px-3 py-1.5 text-left text-slate-200 hover:bg-slate-700"
+              className="block w-full px-3 py-1.5 text-left font-mono text-[12px] uppercase tracking-[0.1em] text-parchdk hover:bg-panel2"
             >
-              Archive
+              ARCHIVE
             </button>
           )}
           <button
             role="menuitem"
             onClick={handleDelete}
-            className="block w-full px-3 py-1.5 text-left text-red-400 hover:bg-slate-700"
+            className="block w-full px-3 py-1.5 text-left font-mono text-[12px] uppercase tracking-[0.1em] text-carnelian hover:bg-panel2"
           >
-            Delete
+            DELETE
           </button>
         </div>
       )}

@@ -34,42 +34,52 @@ export function Composer({
   };
 
   return (
-    <div className="border-t border-slate-800 bg-slate-950/80 px-3 py-3 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-3xl items-end gap-2">
-        <textarea
-          ref={taRef}
-          value={value}
-          disabled={disabled}
-          rows={1}
-          placeholder={disabled ? "Add a provider in Settings first…" : "Message…"}
-          onChange={(e) => {
-            setValue(e.target.value);
-            grow();
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              submit();
+    <div className="border-t border-hair bg-paneldk px-4 py-3">
+      <div className="mx-auto flex w-full max-w-[760px] items-end gap-2">
+        {/* Terminal field */}
+        <div className="term-field flex flex-1 items-start gap-2 px-3 py-2.5">
+          <span
+            className="mt-0.5 select-none font-mono text-[13.5px] text-gold"
+            aria-hidden="true"
+          >
+            ❯
+          </span>
+          <textarea
+            ref={taRef}
+            value={value}
+            disabled={disabled}
+            rows={1}
+            placeholder={
+              disabled ? "Add a provider in Settings first…" : "summon the agent…"
             }
-          }}
-          className="max-h-52 flex-1 resize-none rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-[0.95rem] outline-none placeholder:text-slate-500 focus:border-amber-500 disabled:opacity-50"
-        />
+            onChange={(e) => {
+              setValue(e.target.value);
+              grow();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                submit();
+              }
+            }}
+            className="max-h-52 flex-1 resize-none bg-transparent font-mono text-[13.5px] text-marble outline-none placeholder:text-mutedlo disabled:opacity-50"
+          />
+        </div>
+
         {streaming ? (
           <button
             onClick={onStop}
-            className="rounded-2xl bg-slate-700 px-4 py-3 text-sm font-medium text-slate-100 hover:bg-slate-600"
-            aria-label="Stop generating"
+            className="border border-hair px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.18em] text-parch hover:border-carnelian hover:text-carnelian"
           >
-            Stop
+            STOP
           </button>
         ) : (
           <button
             onClick={submit}
             disabled={disabled || !value.trim()}
-            className="rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-slate-950 hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-40"
-            aria-label="Send message"
+            className="btn-gold px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.18em] disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Send
+            SEND
           </button>
         )}
       </div>

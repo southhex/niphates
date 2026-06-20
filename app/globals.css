@@ -2,104 +2,259 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  color-scheme: dark;
+/* ── Theme tokens ─────────────────────────────────────────────────────── */
+[data-theme="obsidian"] {
+  --void:      #08070A;
+  --ground:    #100E14;
+  --paneldk:   #0C0A10;
+  --panel:     #18151D;
+  --panel2:    #1F1B25;
+  --hair:      #2E2833;
+  --hairlit:   #463C4E;
+  --marble:    #ECE6D8;
+  --parch:     #B8B0A0;
+  --parchdk:   #D6CFC0;
+  --muted:     #847C70;
+  --mutedlo:   #6F6760;
+  --gold:      #C9A24B;
+  --goldbri:   #E3C06A;
+  --goldink:   #100E14;
+  --lapis:     #4F74E0;
+  --malach:    #3A9D6E;
+  --carnelian: #C0504A;
+  --porphyry:  #8A5BB0;
+  --porphlbl:  #A87FD0;
+  --agentbody: #E3DDD0;
 }
 
+[data-theme="marble"] {
+  --void:      #F6F2E9;
+  --ground:    #EFE9DB;
+  --paneldk:   #E3DCCB;
+  --panel:     #F3EEE2;
+  --panel2:    #F6F2E9;
+  --hair:      #CABFA6;
+  --hairlit:   #B3A98A;
+  --marble:    #1C1813;
+  --parch:     #6B6356;
+  --parchdk:   #3A342A;
+  --muted:     #8A7F6A;
+  --mutedlo:   #A89E88;
+  --gold:      #8A6D2A;
+  --goldbri:   #A4843A;
+  --goldink:   #F4EFE4;
+  --lapis:     #2F4FB0;
+  --malach:    #2F8A5C;
+  --carnelian: #A8392F;
+  --porphyry:  #6E4A90;
+  --porphlbl:  #6E4A90;
+  --agentbody: #241F17;
+}
+
+/* ── Base ─────────────────────────────────────────────────────────────── */
 html,
 body {
   height: 100%;
 }
 
 body {
-  @apply bg-slate-950 text-slate-100 antialiased;
-  /* Respect mobile safe areas (notches, home indicator). */
+  background-color: var(--ground);
+  color: var(--marble);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  -webkit-font-smoothing: antialiased;
   padding: env(safe-area-inset-top) env(safe-area-inset-right)
     env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
-/* Thin, unobtrusive scrollbars. */
+/* Sharp corners everywhere */
+*,
+*::before,
+*::after {
+  border-radius: 0 !important;
+}
+
+/* Selection */
+::selection {
+  background: var(--gold);
+  color: var(--goldink);
+}
+
+/* Scrollbars */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #334155 transparent;
+  scrollbar-color: var(--hair) transparent;
 }
 *::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 *::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 9999px;
+  background: var(--hair);
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-/* Basic readable formatting for message text. */
+/* ── Niphates utilities ───────────────────────────────────────────────── */
+
+/* Gold primary button */
+.btn-gold {
+  background: var(--gold);
+  color: var(--goldink);
+  box-shadow: 0 0 0 1px var(--gold), 0 0 18px rgba(201, 162, 75, 0.2);
+  transition: background 0.15s;
+}
+.btn-gold:hover:not(:disabled) {
+  background: var(--goldbri);
+}
+
+/* Ghost gold border button */
+.btn-ghost-gold {
+  background: transparent;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  transition: background 0.15s;
+}
+.btn-ghost-gold:hover {
+  background: rgba(201, 162, 75, 0.1);
+}
+
+/* Terminal input field */
+.term-field {
+  background: var(--void);
+  border: 1px solid var(--hairlit);
+  color: var(--marble);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.term-field:focus,
+.term-field:focus-within {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 1px var(--gold), 0 0 18px rgba(201, 162, 75, 0.18);
+}
+
+/* Status dots (square, not circle) */
+.status-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+}
+.status-dot-malach {
+  background: var(--malach);
+  box-shadow: 0 0 7px var(--malach);
+}
+.status-dot-gold {
+  background: var(--gold);
+  box-shadow: 0 0 7px var(--gold);
+}
+.status-dot-carnelian {
+  background: var(--carnelian);
+  box-shadow: 0 0 7px var(--carnelian);
+}
+
+/* Gold glow pulse — summoning indicator */
+@keyframes niphates-pulse {
+  0%,
+  100% { opacity: 0.35; }
+  50%  { opacity: 1; }
+}
+.glow-pulse {
+  animation: niphates-pulse 1.1s ease-in-out infinite;
+}
+
+/* ── .msg-content — Niphates markdown restyle ────────────────────────── */
 .msg-content {
-  @apply break-words leading-relaxed;
+  word-break: break-words;
 }
+.msg-content > :first-child { margin-top: 0; }
+.msg-content > :last-child  { margin-bottom: 0; }
 
-/* Inline code (and code inside pre, reset there below). */
+.msg-content p { margin: 0.6em 0; }
+
+.msg-content a {
+  color: var(--gold);
+  text-underline-offset: 2px;
+}
+.msg-content a:hover { color: var(--goldbri); }
+
 .msg-content code {
-  @apply rounded bg-slate-800 px-1 py-0.5 font-mono text-[0.85em];
+  font-family: var(--font-mono), ui-monospace, monospace;
+  background: var(--panel);
+  border: 1px solid var(--hair);
+  padding: 0.05em 0.35em;
+  font-size: 0.8em;
+  color: var(--parchdk);
 }
 
-/* --- Markdown rendering for assistant bubbles -------------------------- */
-.msg-content > :first-child {
-  margin-top: 0;
+.msg-content pre {
+  background: var(--void);
+  border: 1px solid var(--hair);
+  padding: 14px;
+  margin: 0.75em 0;
+  overflow-x: auto;
 }
-.msg-content > :last-child {
-  margin-bottom: 0;
+.msg-content pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: 0.85em;
+  display: block;
+  line-height: 1.6;
+  color: var(--parchdk);
 }
-.msg-content p {
-  @apply my-2;
+
+.msg-content blockquote {
+  border-left: 2px solid var(--porphyry);
+  padding-left: 14px;
+  color: var(--parch);
+  font-style: italic;
+  margin: 0.75em 0;
 }
+
 .msg-content h1,
 .msg-content h2,
 .msg-content h3,
 .msg-content h4 {
-  @apply mb-2 mt-4 font-semibold leading-snug;
+  font-family: var(--font-cinzel), serif;
+  letter-spacing: 0.04em;
+  color: var(--marble);
+  margin-top: 1.2em;
+  margin-bottom: 0.4em;
+  line-height: 1.25;
 }
-.msg-content h1 {
-  @apply text-xl;
+.msg-content h1 { font-size: 1.25em; }
+.msg-content h2 { font-size: 1.1em; }
+.msg-content h3 { font-size: 1em; }
+
+.msg-content hr {
+  border: none;
+  border-top: 1px solid var(--hair);
+  margin: 1em 0;
 }
-.msg-content h2 {
-  @apply text-lg;
-}
-.msg-content h3 {
-  @apply text-base;
-}
+
 .msg-content ul {
-  @apply my-2 list-disc space-y-1 pl-5;
+  list-style: disc;
+  padding-left: 1.25em;
+  margin: 0.5em 0;
 }
 .msg-content ol {
-  @apply my-2 list-decimal space-y-1 pl-5;
+  list-style: decimal;
+  padding-left: 1.25em;
+  margin: 0.5em 0;
 }
-.msg-content li > ul,
-.msg-content li > ol {
-  @apply my-1;
-}
-.msg-content a {
-  @apply text-amber-400 underline underline-offset-2 hover:text-amber-300;
-}
-.msg-content blockquote {
-  @apply my-2 border-l-2 border-slate-600 pl-3 text-slate-300;
-}
-.msg-content hr {
-  @apply my-4 border-slate-700;
-}
-.msg-content pre {
-  @apply my-2 overflow-x-auto rounded-lg bg-slate-950/70 p-3 text-[0.85em];
-}
-/* Code inside a fenced block: clear the inline-code chrome. */
-.msg-content pre code {
-  @apply block bg-transparent p-0 font-mono leading-relaxed;
-}
+.msg-content li { margin: 0.25em 0; }
+
 .msg-content table {
-  @apply my-2 block w-full overflow-x-auto border-collapse text-[0.9em];
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+  margin: 0.75em 0;
 }
 .msg-content th,
 .msg-content td {
-  @apply border border-slate-700 px-2 py-1 text-left;
+  border: 1px solid var(--hair);
+  padding: 0.3em 0.6em;
+  text-align: left;
 }
-.msg-content th {
-  @apply bg-slate-800/60 font-semibold;
-}
+.msg-content th { background: var(--panel); }

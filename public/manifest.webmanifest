@@ -1,13 +1,13 @@
 {
-  "name": "Hermes Chat",
-  "short_name": "Hermes",
+  "name": "Niphates",
+  "short_name": "Niphates",
   "description": "Self-hosted chat for Hermes Agent, Ollama, and other LLM APIs.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#0b0f14",
-  "theme_color": "#0b0f14",
+  "background_color": "#100E14",
+  "theme_color": "#100E14",
   "icons": [
     {
       "src": "/icons/icon-192.png",

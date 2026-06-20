@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { MessageList } from "@/components/MessageList";
 import { Composer } from "@/components/Composer";
+import { Select } from "@/components/Select";
 import { streamChatRequest } from "@/lib/client";
 import {
   loadConversations,
@@ -238,9 +239,9 @@ export default function Home() {
 
       <main className="flex min-w-0 flex-1 flex-col">
         {/* Header */}
-        <header className="flex items-center gap-2 border-b border-slate-800 px-3 py-2">
+        <header className="flex items-center gap-2 border-b border-hair bg-paneldk px-3 py-2">
           <button
-            className="rounded-lg p-2 text-slate-300 hover:bg-slate-800 md:hidden"
+            className="p-2 font-mono text-parch hover:text-marble md:hidden"
             onClick={() => setSidebarOpen(true)}
             aria-label="Open menu"
           >
@@ -248,45 +249,46 @@ export default function Home() {
           </button>
 
           <div className="flex flex-1 items-center gap-2 overflow-x-auto">
-            <select
-              value={providerId}
-              onChange={(e) => onProviderChange(e.target.value)}
-              disabled={noProviders}
-              className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm outline-none focus:border-amber-500"
-            >
-              {noProviders && <option>No providers</option>}
-              {providers.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+            {/* Provider chip */}
+            <div className="flex items-center gap-1.5 border border-hair bg-panel px-2.5 py-1.5">
+              <span className="status-dot status-dot-malach" />
+              <Select
+                value={providerId}
+                onChange={onProviderChange}
+                options={providers.map((p) => ({ value: p.id, label: p.name }))}
+                disabled={noProviders}
+                placeholder="No providers"
+                valueClassName="text-marble"
+              />
+            </div>
 
-            <select
-              value={model}
-              onChange={(e) => onModelChange(e.target.value)}
-              disabled={!currentProvider || currentProvider.models.length === 0}
-              aria-label="Model"
-              className="min-w-[10rem] flex-1 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm font-medium outline-none focus:border-amber-500"
-            >
-              {(currentProvider?.models || []).map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
+            {/* Model chip */}
+            <div className="flex items-center gap-1 border border-hair bg-panel px-2.5 py-1.5">
+              <Select
+                value={model}
+                onChange={onModelChange}
+                options={(currentProvider?.models ?? []).map((m) => ({ value: m, label: m }))}
+                disabled={!currentProvider || currentProvider.models.length === 0}
+                valueClassName="text-gold min-w-[8rem]"
+              />
+            </div>
           </div>
         </header>
 
         {/* Messages */}
         <div className="min-h-0 flex-1 overflow-y-auto">
           {noProviders ? (
-            <div className="flex h-full items-center justify-center px-6 text-center text-slate-400">
-              <div className="max-w-md space-y-2">
-                <div className="text-4xl">⚡</div>
-                <p>
+            <div className="flex h-full items-center justify-center px-6 text-center">
+              <div className="max-w-md">
+                <div className="mb-4 font-display text-[36px] font-semibold uppercase tracking-[0.1em] text-marble">
+                  NIPHATES
+                </div>
+                <p className="font-mono text-[13px] text-parch">
                   No providers configured. Open{" "}
-                  <a href="/settings" className="text-amber-400 underline">
+                  <a
+                    href="/settings"
+                    className="text-gold underline underline-offset-2 hover:text-goldbri"
+                  >
                     Settings
                   </a>{" "}
                   to connect Hermes Agent or another API.

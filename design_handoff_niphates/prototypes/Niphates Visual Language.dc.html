@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Spectral:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;}
+  ::-webkit-scrollbar{width:10px;height:10px;}
+  ::-webkit-scrollbar-thumb{background:#2e2833;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::selection{background:#c9a24b;color:#100e14;}
+</style>
+</helmet>
+
+<div style="background:#100e14;min-height:100vh;color:#ece6d8;font-family:'IBM Plex Mono',monospace;padding-bottom:80px;background-image:radial-gradient(120% 80% at 50% -10%, rgba(201,162,75,.06), transparent 60%);">
+
+  <!-- command bar -->
+  <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #c9a24b;padding:9px 22px;font-size:11px;letter-spacing:.16em;color:#c9a24b;text-transform:uppercase;">
+    <span>NIPHATES // visual language — v0.1</span>
+    <span style="color:#847c70;">Paradise Lost · Book IV</span>
+  </div>
+
+  <div style="max-width:1180px;margin:0 auto;padding:0 28px;">
+
+    <!-- ============ MASTHEAD ============ -->
+    <header style="position:relative;padding:96px 0 56px;border-bottom:1px solid #2e2833;overflow:hidden;">
+      <div style="position:absolute;right:-12px;top:30px;font-family:'Cinzel',serif;font-size:200px;line-height:1;color:rgba(201,162,75,.05);pointer-events:none;user-select:none;">IV</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.34em;color:#4f74e0;text-transform:uppercase;margin-bottom:26px;">❯ agent workspace · self-hosted</div>
+      <h1 style="font-family:'Cinzel',serif;font-weight:700;font-size:104px;line-height:.96;letter-spacing:.07em;margin:0;color:#ece6d8;">NIPHATES</h1>
+      <div style="height:1px;background:linear-gradient(90deg,#c9a24b,transparent);margin:30px 0 22px;max-width:540px;"></div>
+      <p style="font-family:'Spectral',serif;font-style:italic;font-size:23px;line-height:1.45;color:#b8b0a0;margin:0;max-width:560px;">“The mind is its own place, and in it self<br>can make a Heav'n of Hell, a Hell of Heav'n.”</p>
+      <p style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.14em;color:#847c70;margin:16px 0 0;text-transform:uppercase;">— John Milton</p>
+    </header>
+
+    <!-- ============ I · PALETTE ============ -->
+    <section style="padding:64px 0;border-bottom:1px solid #2e2833;">
+      <div style="display:flex;align-items:baseline;gap:16px;margin-bottom:8px;">
+        <span style="font-family:'Cinzel',serif;font-size:13px;letter-spacing:.3em;color:#c9a24b;">I</span>
+        <h2 style="font-family:'Cinzel',serif;font-weight:600;font-size:30px;letter-spacing:.06em;margin:0;color:#ece6d8;">Palette</h2>
+      </div>
+      <p style="font-size:12.5px;letter-spacing:.04em;color:#847c70;margin:0 0 34px;max-width:620px;line-height:1.7;">Marble grounds for substance, struck gem-tones for signal. Gold is the gilt that runs through everything; lapis is the cool counterweight. The rest are reserved for status and category.</p>
+
+      <div style="font-size:11px;letter-spacing:.2em;color:#847c70;margin-bottom:14px;">MARBLE — NEUTRALS</div>
+      <div style="display:flex;flex-wrap:wrap;gap:0;border:1px solid #2e2833;margin-bottom:36px;">
+        <div style="flex:1;min-width:120px;height:120px;background:#08070a;border-right:1px solid #2e2833;padding:12px;display:flex;flex-direction:column;justify-content:flex-end;">
+          <div style="font-size:12px;color:#ece6d8;letter-spacing:.05em;">Void</div><div style="font-size:11px;color:#847c70;">#08070A</div></div>
+        <div style="flex:1;min-width:120px;height:120px;background:#100e14;border-right:1px solid #2e2833;padding:12px;display:flex;flex-direction:column;justify-content:flex-end;">
+          <div style="font-size:12px;color:#ece6d8;letter-spacing:.05em;">Obsidian</div><div style="font-size:11px;color:#847c70;">#100E14</div></div>
+        <div style="flex:1;min-width:120px;height:120px;background:#18151d;border-right:1px solid #2e2833;padding:12px;display:flex;flex-direction:column;justify-content:flex-end;">
+          <div style="font-size:12px;color:#ece6d8;letter-spacing:.05em;">Panel</div><div style="font-size:11px;color:#847c70;">#18151D</div></div>
+        <div style="flex:1;min-width:120px;height:120px;background:#b8b0a0;border-right:1px solid #2e2833;padding:12px;display:flex;flex-direction:column;justify-content:flex-end;">
+          <div style="font-size:12px;color:#100e14;letter-spacing:.05em;">Parchment</div><div style="font-size:11px;color:rgba(16,14,20,.6);">#B8B0A0</div></div>
+        <div style="flex:1;min-width:120px;height:120px;background:#ece6d8;padding:12px;display:flex;flex-direction:column;justify-content:flex-end;">
+          <div style="font-size:12px;color:#100e14;letter-spacing:.05em;">Marble</div><div style="font-size:11px;color:rgba(16,14,20,.6);">#ECE6D8</div></div>
+      </div>
+
+      <div style="font-size:11px;letter-spacing:.2em;color:#847c70;margin-bottom:14px;">GEM — ACCENTS</div>
+      <div style="display:flex;flex-wrap:wrap;gap:0;border:1px solid #2e2833;">
+        <div style="flex:1;min-width:120px;height:130px;background:#c9a24b;border-right:1px solid #2e2833;padding:12px;display:flex;flex-direction:column;justify-content:space-between;">
+          <span style="font-family:'Cinzel',serif;font-size:20px;color:#100e14;">Au</span>
+          <div><div style="font-size:12px;color:#100e14;letter-spacing:.05em;">Gold</div><div style="font-size:11px;color:rgba(16,14,20,.55);">#C9A24B · primary</div></div></div>
+        <div style="flex:1;min-width:120px;height:130px;background:#4f74e0;border-right:1px solid #2e2833;padding:12px;display:flex;flex-direction:column;justify-content:space-between;">
+          <span style="font-family:'Cinzel',serif;font-size:20px;color:#ece6d8;">La</span>
+          <div><div style="font-size:12px;color:#ece6d8;letter-spacing:.05em;">Lapis</div><div style="font-size:11px;color:rgba(236,230,216,.65);">#4F74E0 · accent</div></div></div>
+        <div style="flex:1;min-width:120px;height:130px;background:#3a9d6e;border-right:1px solid #2e2833;padding:12px;display:flex;flex-direction:column;justify-content:space-between;">
+          <span style="font-family:'Cinzel',serif;font-size:20px;color:#ece6d8;">Ml</span>
+          <div><div style="font-size:12px;color:#ece6d8;letter-spacing:.05em;">Malachite</div><div style="font-size:11px;color:rgba(236,230,216,.65);">#3A9D6E · ok</div></div></div>
+        <div style="flex:1;min-width:120px;height:130px;background:#c0504a;border-right:1px solid #2e2833;padding:12px;display:flex;flex-direction:column;justify-content:space-between;">
+          <span style="font-family:'Cinzel',serif;font-size:20px;color:#ece6d8;">Cn</span>
+          <div><div style="font-size:12px;color:#ece6d8;letter-spacing:.05em;">Carnelian</div><div style="font-size:11px;color:rgba(236,230,216,.65);">#C0504A · alert</div></div></div>
+        <div style="flex:1;min-width:120px;height:130px;background:#8a5bb0;padding:12px;display:flex;flex-direction:column;justify-content:space-between;">
+          <span style="font-family:'Cinzel',serif;font-size:20px;color:#ece6d8;">Po</span>
+          <div><div style="font-size:12px;color:#ece6d8;letter-spacing:.05em;">Porphyry</div><div style="font-size:11px;color:rgba(236,230,216,.65);">#8A5BB0 · agent</div></div></div>
+      </div>
+    </section>
+
+    <!-- ============ II · TYPOGRAPHY ============ -->
+    <section style="padding:64px 0;border-bottom:1px solid #2e2833;">
+      <div style="display:flex;align-items:baseline;gap:16px;margin-bottom:34px;">
+        <span style="font-family:'Cinzel',serif;font-size:13px;letter-spacing:.3em;color:#c9a24b;">II</span>
+        <h2 style="font-family:'Cinzel',serif;font-weight:600;font-size:30px;letter-spacing:.06em;margin:0;color:#ece6d8;">Typography</h2>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:0;border:1px solid #2e2833;">
+        <div style="display:flex;gap:28px;padding:30px 26px;border-bottom:1px solid #2e2833;align-items:center;">
+          <div style="flex:none;width:150px;font-size:11px;letter-spacing:.14em;color:#847c70;line-height:1.8;">CINZEL<br><span style="color:#4f74e0;">DISPLAY · TITLES</span></div>
+          <div style="font-family:'Cinzel',serif;font-weight:600;font-size:42px;letter-spacing:.06em;color:#ece6d8;">Of Man's First Disobedience</div>
+        </div>
+        <div style="display:flex;gap:28px;padding:30px 26px;border-bottom:1px solid #2e2833;align-items:center;">
+          <div style="flex:none;width:150px;font-size:11px;letter-spacing:.14em;color:#847c70;line-height:1.8;">SPECTRAL<br><span style="color:#4f74e0;">READING · AGENT</span></div>
+          <div style="font-family:'Spectral',serif;font-size:21px;line-height:1.55;color:#d6cfc0;max-width:640px;">A reading serif carries the agent's voice — long-form answers, prose, and explanation. <span style="font-style:italic;">Set in italic for emphasis and citation.</span></div>
+        </div>
+        <div style="display:flex;gap:28px;padding:30px 26px;align-items:center;">
+          <div style="flex:none;width:150px;font-size:11px;letter-spacing:.14em;color:#847c70;line-height:1.8;">IBM PLEX MONO<br><span style="color:#4f74e0;">UI · TERMINAL</span></div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:15px;line-height:1.7;color:#d6cfc0;max-width:640px;">Labels, input, code, and the operator's own words.<br><span style="color:#847c70;">› the interface speaks in monospace.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ III · COMPONENTS ============ -->
+    <section style="padding:64px 0;border-bottom:1px solid #2e2833;">
+      <div style="display:flex;align-items:baseline;gap:16px;margin-bottom:34px;">
+        <span style="font-family:'Cinzel',serif;font-size:13px;letter-spacing:.3em;color:#c9a24b;">III</span>
+        <h2 style="font-family:'Cinzel',serif;font-weight:600;font-size:30px;letter-spacing:.06em;margin:0;color:#ece6d8;">Components</h2>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#2e2833;border:1px solid #2e2833;">
+        <!-- buttons -->
+        <div style="background:#100e14;padding:30px 26px;">
+          <div style="font-size:11px;letter-spacing:.2em;color:#847c70;margin-bottom:20px;">BUTTONS — SHARP, BRIGHT-RULED</div>
+          <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;">
+            <button style="border:none;cursor:pointer;background:#c9a24b;color:#100e14;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;letter-spacing:.18em;padding:11px 22px;box-shadow:0 0 0 1px #c9a24b, 0 0 18px rgba(201,162,75,.25);" style-hover="background:#e3c06a;">SEND</button>
+            <button style="background:transparent;cursor:pointer;border:1px solid #c9a24b;color:#c9a24b;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;letter-spacing:.18em;padding:11px 22px;" style-hover="background:rgba(201,162,75,.1);">GHOST</button>
+            <button style="background:transparent;cursor:pointer;border:1px solid #2e2833;color:#b8b0a0;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.18em;padding:11px 22px;" style-hover="border-color:#4f74e0;color:#4f74e0;">CANCEL</button>
+          </div>
+        </div>
+        <!-- terminal input -->
+        <div style="background:#100e14;padding:30px 26px;">
+          <div style="font-size:11px;letter-spacing:.2em;color:#847c70;margin-bottom:20px;">TERMINAL FIELD</div>
+          <div style="display:flex;align-items:center;gap:10px;border:1px solid #463c4e;background:#08070a;padding:12px 14px;box-shadow:0 0 0 1px rgba(79,116,224,.0);">
+            <span style="color:#c9a24b;font-size:14px;">❯</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:14px;color:#d6cfc0;">summon the agent_<span style="background:#4f74e0;color:#4f74e0;">|</span></span>
+          </div>
+          <div style="font-size:10.5px;letter-spacing:.1em;color:#847c70;margin-top:10px;">FOCUS RAISES A LAPIS RULE + FAINT GLOW</div>
+        </div>
+        <!-- provider chip -->
+        <div style="background:#100e14;padding:30px 26px;">
+          <div style="font-size:11px;letter-spacing:.2em;color:#847c70;margin-bottom:20px;">PROVIDER / MODEL SELECT</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:9px;border:1px solid #2e2833;background:#18151d;padding:9px 13px;">
+              <span style="width:7px;height:7px;background:#3a9d6e;box-shadow:0 0 8px #3a9d6e;"></span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#ece6d8;letter-spacing:.04em;">Hermes Agent</span>
+              <span style="color:#847c70;font-size:11px;">▾</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:9px;border:1px solid #2e2833;background:#18151d;padding:9px 13px;">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#c9a24b;letter-spacing:.04em;">hermes-agent</span>
+              <span style="color:#847c70;font-size:11px;">▾</span>
+            </div>
+          </div>
+        </div>
+        <!-- status -->
+        <div style="background:#100e14;padding:30px 26px;">
+          <div style="font-size:11px;letter-spacing:.2em;color:#847c70;margin-bottom:20px;">STATUS — STRUCK GEM DOTS</div>
+          <div style="display:flex;flex-direction:column;gap:12px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;">
+            <div style="display:flex;align-items:center;gap:10px;"><span style="width:8px;height:8px;background:#3a9d6e;box-shadow:0 0 8px #3a9d6e;"></span><span style="color:#d6cfc0;">connected · loopback</span></div>
+            <div style="display:flex;align-items:center;gap:10px;"><span style="width:8px;height:8px;background:#c9a24b;box-shadow:0 0 8px #c9a24b;"></span><span style="color:#d6cfc0;">streaming…</span></div>
+            <div style="display:flex;align-items:center;gap:10px;"><span style="width:8px;height:8px;background:#c0504a;box-shadow:0 0 8px #c0504a;"></span><span style="color:#d6cfc0;">no key · unreachable</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ IV · THE DIALOGUE ============ -->
+    <section style="padding:64px 0;border-bottom:1px solid #2e2833;">
+      <div style="display:flex;align-items:baseline;gap:16px;margin-bottom:10px;">
+        <span style="font-family:'Cinzel',serif;font-size:13px;letter-spacing:.3em;color:#c9a24b;">IV</span>
+        <h2 style="font-family:'Cinzel',serif;font-weight:600;font-size:30px;letter-spacing:.06em;margin:0;color:#ece6d8;">The Dialogue</h2>
+      </div>
+      <p style="font-size:12.5px;letter-spacing:.04em;color:#847c70;margin:0 0 34px;max-width:620px;line-height:1.7;">Chat is reframed as a transcript, not chat bubbles. Each turn is a named speaker with a struck rule — OPERATOR in mono, NIPHATES in reading serif. Spoken like a classical dialogue.</p>
+
+      <div style="border:1px solid #2e2833;background:#0c0a10;padding:40px 38px;display:flex;flex-direction:column;gap:30px;">
+        <div style="border-left:2px solid #c9a24b;padding-left:20px;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.28em;color:#c9a24b;margin-bottom:9px;">OPERATOR</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:14.5px;line-height:1.6;color:#d6cfc0;">What are the GPU temps on the rig right now?</div>
+        </div>
+        <div style="border-left:2px solid #8a5bb0;padding-left:20px;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.28em;color:#a87fd0;margin-bottom:9px;">NIPHATES</div>
+          <div style="font-family:'Spectral',serif;font-size:19px;line-height:1.6;color:#e3ddd0;max-width:660px;">Both cards sit comfortably — <span style="color:#c9a24b;">GPU0 at 61°C</span>, <span style="color:#c9a24b;">GPU1 at 58°C</span> under the current Ollama load. Fans hold near 40%, nothing throttling. There is ample thermal headroom should you wish to summon a heavier model.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ V · APPLIED ============ -->
+    <section style="padding:64px 0;">
+      <div style="display:flex;align-items:baseline;gap:16px;margin-bottom:10px;">
+        <span style="font-family:'Cinzel',serif;font-size:13px;letter-spacing:.3em;color:#c9a24b;">V</span>
+        <h2 style="font-family:'Cinzel',serif;font-weight:600;font-size:30px;letter-spacing:.06em;margin:0;color:#ece6d8;">Applied — Choose the Ground</h2>
+      </div>
+      <p style="font-size:12.5px;letter-spacing:.04em;color:#847c70;margin:0 0 34px;max-width:620px;line-height:1.7;">The same chat surface on two substrates. Obsidian for the terminal-at-night feel; Marble for stone-and-ink daylight. Same gold, same dialogue, same sharp rules.</p>
+
+      <div style="display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap;">
+
+        <!-- OBSIDIAN FRAME -->
+        <div style="flex:1;min-width:440px;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.2em;color:#847c70;margin-bottom:12px;">OBSIDIAN — DARK</div>
+          <div style="border:1px solid #2e2833;display:flex;height:430px;overflow:hidden;background:#100e14;">
+            <!-- sidebar -->
+            <div style="width:148px;flex:none;border-right:1px solid #2e2833;background:#0c0a10;display:flex;flex-direction:column;">
+              <div style="font-family:'Cinzel',serif;font-size:15px;letter-spacing:.12em;color:#ece6d8;padding:14px 13px;border-bottom:1px solid #2e2833;">NIPHATES</div>
+              <div style="padding:11px 12px;"><div style="border:1px solid #c9a24b;color:#c9a24b;font-size:9.5px;letter-spacing:.16em;text-align:center;padding:7px;">❯ NEW DIALOGUE</div></div>
+              <div style="flex:1;padding:0 8px;display:flex;flex-direction:column;gap:2px;font-size:10.5px;">
+                <div style="border-left:2px solid #c9a24b;background:#18151d;padding:7px 9px;color:#ece6d8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">GPU temps on the rig</div>
+                <div style="padding:7px 9px;color:#847c70;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:2px solid transparent;">Nightly backup cron</div>
+                <div style="padding:7px 9px;color:#847c70;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:2px solid transparent;">Connection test</div>
+              </div>
+              <div style="border-top:1px solid #2e2833;padding:9px 11px;font-size:9.5px;letter-spacing:.12em;color:#847c70;display:flex;flex-direction:column;gap:7px;"><span>⚡ CONTROL</span><span>⚙ SETTINGS</span></div>
+            </div>
+            <!-- main -->
+            <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
+              <div style="display:flex;gap:7px;border-bottom:1px solid #2e2833;padding:9px 12px;">
+                <div style="border:1px solid #2e2833;background:#18151d;padding:5px 9px;font-size:10px;color:#ece6d8;display:flex;gap:6px;align-items:center;"><span style="width:6px;height:6px;background:#3a9d6e;box-shadow:0 0 6px #3a9d6e;"></span>Hermes Agent ▾</div>
+                <div style="border:1px solid #2e2833;background:#18151d;padding:5px 9px;font-size:10px;color:#c9a24b;">hermes-agent ▾</div>
+              </div>
+              <div style="flex:1;padding:18px 18px;display:flex;flex-direction:column;gap:18px;overflow:hidden;">
+                <div style="border-left:2px solid #c9a24b;padding-left:13px;"><div style="font-size:9px;letter-spacing:.24em;color:#c9a24b;margin-bottom:5px;">OPERATOR</div><div style="font-size:11.5px;color:#d6cfc0;line-height:1.5;">What are the GPU temps on the rig right now?</div></div>
+                <div style="border-left:2px solid #8a5bb0;padding-left:13px;"><div style="font-size:9px;letter-spacing:.24em;color:#a87fd0;margin-bottom:5px;">NIPHATES</div><div style="font-family:'Spectral',serif;font-size:14.5px;color:#e3ddd0;line-height:1.5;">Both cards sit comfortably — <span style="color:#c9a24b;">61°C</span> and <span style="color:#c9a24b;">58°C</span> under load. Nothing throttling; ample headroom for a heavier model.</div></div>
+              </div>
+              <div style="border-top:1px solid #2e2833;padding:11px 14px;display:flex;gap:9px;align-items:center;">
+                <div style="flex:1;border:1px solid #463c4e;background:#08070a;padding:8px 11px;font-size:11px;color:#847c70;display:flex;gap:8px;"><span style="color:#c9a24b;">❯</span>summon the agent…</div>
+                <div style="background:#c9a24b;color:#100e14;font-size:10px;font-weight:600;letter-spacing:.14em;padding:8px 14px;">SEND</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MARBLE FRAME -->
+        <div style="flex:1;min-width:440px;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.2em;color:#847c70;margin-bottom:12px;">MARBLE — LIGHT</div>
+          <div style="border:1px solid #cabfa6;display:flex;height:430px;overflow:hidden;background:#ece6d8;">
+            <!-- sidebar -->
+            <div style="width:148px;flex:none;border-right:1px solid #cabfa6;background:#e3dccb;display:flex;flex-direction:column;">
+              <div style="font-family:'Cinzel',serif;font-size:15px;letter-spacing:.12em;color:#1c1813;padding:14px 13px;border-bottom:1px solid #cabfa6;">NIPHATES</div>
+              <div style="padding:11px 12px;"><div style="border:1px solid #8a6d2a;color:#8a6d2a;font-size:9.5px;letter-spacing:.16em;text-align:center;padding:7px;">❯ NEW DIALOGUE</div></div>
+              <div style="flex:1;padding:0 8px;display:flex;flex-direction:column;gap:2px;font-size:10.5px;">
+                <div style="border-left:2px solid #8a6d2a;background:#f3eee2;padding:7px 9px;color:#1c1813;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">GPU temps on the rig</div>
+                <div style="padding:7px 9px;color:#8a7f6a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:2px solid transparent;">Nightly backup cron</div>
+                <div style="padding:7px 9px;color:#8a7f6a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:2px solid transparent;">Connection test</div>
+              </div>
+              <div style="border-top:1px solid #cabfa6;padding:9px 11px;font-size:9.5px;letter-spacing:.12em;color:#8a7f6a;display:flex;flex-direction:column;gap:7px;"><span>⚡ CONTROL</span><span>⚙ SETTINGS</span></div>
+            </div>
+            <!-- main -->
+            <div style="flex:1;display:flex;flex-direction:column;min-width:0;background:#efe9db;">
+              <div style="display:flex;gap:7px;border-bottom:1px solid #cabfa6;padding:9px 12px;">
+                <div style="border:1px solid #cabfa6;background:#f3eee2;padding:5px 9px;font-size:10px;color:#1c1813;display:flex;gap:6px;align-items:center;"><span style="width:6px;height:6px;background:#2f8a5c;"></span>Hermes Agent ▾</div>
+                <div style="border:1px solid #cabfa6;background:#f3eee2;padding:5px 9px;font-size:10px;color:#8a6d2a;">hermes-agent ▾</div>
+              </div>
+              <div style="flex:1;padding:18px 18px;display:flex;flex-direction:column;gap:18px;overflow:hidden;">
+                <div style="border-left:2px solid #8a6d2a;padding-left:13px;"><div style="font-size:9px;letter-spacing:.24em;color:#8a6d2a;margin-bottom:5px;">OPERATOR</div><div style="font-size:11.5px;color:#3a342a;line-height:1.5;">What are the GPU temps on the rig right now?</div></div>
+                <div style="border-left:2px solid #6e4a90;padding-left:13px;"><div style="font-size:9px;letter-spacing:.24em;color:#6e4a90;margin-bottom:5px;">NIPHATES</div><div style="font-family:'Spectral',serif;font-size:14.5px;color:#241f17;line-height:1.5;">Both cards sit comfortably — <span style="color:#8a6d2a;">61°C</span> and <span style="color:#8a6d2a;">58°C</span> under load. Nothing throttling; ample headroom for a heavier model.</div></div>
+              </div>
+              <div style="border-top:1px solid #cabfa6;padding:11px 14px;display:flex;gap:9px;align-items:center;">
+                <div style="flex:1;border:1px solid #b3a98a;background:#f6f2e9;padding:8px 11px;font-size:11px;color:#8a7f6a;display:flex;gap:8px;"><span style="color:#8a6d2a;">❯</span>summon the agent…</div>
+                <div style="background:#8a6d2a;color:#ece6d8;font-size:10px;font-weight:600;letter-spacing:.14em;padding:8px 14px;">SEND</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

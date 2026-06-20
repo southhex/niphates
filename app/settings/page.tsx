@@ -48,7 +48,7 @@ export default function SettingsPage() {
       name: p.name,
       type: p.type,
       baseUrl: p.baseUrl,
-      apiKey: "", // never prefilled; leave blank to keep existing key
+      apiKey: "",
       models: p.models.join(", "),
       defaultModel: p.defaultModel || "",
       enabled: p.enabled !== false,
@@ -130,191 +130,228 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Providers</h1>
-        <Link href="/" className="text-sm text-amber-400 hover:underline">
-          ← Back to chat
+    <div className="min-h-screen bg-ground">
+      {/* Command bar */}
+      <div className="flex items-center justify-between border-b border-gold px-6 py-2">
+        <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-gold">
+          NIPHATES // SETTINGS
+        </span>
+        <Link
+          href="/"
+          className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted hover:text-gold"
+        >
+          ← RETURN
         </Link>
       </div>
 
-      {status && (
-        <div className="mb-4 break-words rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-300">
-          {status}
+      <div className="mx-auto max-w-3xl px-4 py-8">
+        {/* Title */}
+        <div className="mb-8 flex items-center gap-3">
+          <span className="font-display text-[20px] text-gold">§</span>
+          <h1 className="font-display text-[32px] font-semibold uppercase tracking-[0.08em] text-marble">
+            Providers
+          </h1>
         </div>
-      )}
 
-      <div className="space-y-3">
-        {providers.map((p) => (
-          <div
-            key={p.id}
-            className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-800 bg-slate-900 px-4 py-3"
-          >
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{p.name}</span>
-                <span className="rounded bg-slate-800 px-1.5 py-0.5 text-xs text-slate-400">
-                  {p.type}
-                </span>
-                {p.enabled === false && (
-                  <span className="rounded bg-slate-800 px-1.5 py-0.5 text-xs text-slate-500">
-                    disabled
-                  </span>
-                )}
-                {!p.hasKey && p.type !== "openai" && (
-                  <span className="rounded bg-red-900/50 px-1.5 py-0.5 text-xs text-red-300">
-                    no key
-                  </span>
-                )}
-              </div>
-              <div className="truncate text-xs text-slate-500">{p.baseUrl}</div>
-              <div className="truncate text-xs text-slate-500">
-                {p.models.join(", ") || "no models"}
-              </div>
-            </div>
-            <div className="flex gap-1">
-              <button
-                onClick={() => test(p.id)}
-                className="rounded-lg border border-slate-700 px-2.5 py-1.5 text-xs hover:bg-slate-800"
-              >
-                Test
-              </button>
-              <button
-                onClick={() => startEdit(p)}
-                className="rounded-lg border border-slate-700 px-2.5 py-1.5 text-xs hover:bg-slate-800"
-              >
-                Edit
-              </button>
-              <button
-                onClick={() => remove(p.id)}
-                className="rounded-lg border border-slate-700 px-2.5 py-1.5 text-xs text-red-300 hover:bg-slate-800"
-              >
-                Delete
-              </button>
-            </div>
+        {/* Status message */}
+        {status && (
+          <div className="mb-4 break-words border border-hair bg-panel px-3 py-2 font-mono text-[13px] text-parch">
+            {status}
           </div>
-        ))}
-      </div>
+        )}
 
-      {!editing ? (
-        <button
-          onClick={startNew}
-          className="mt-4 rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-amber-400"
-        >
-          + Add provider
-        </button>
-      ) : (
-        <div className="mt-6 space-y-3 rounded-xl border border-slate-800 bg-slate-900 p-4">
-          <h2 className="font-medium">{form.id ? "Edit" : "New"} provider</h2>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field label="ID (slug)">
-              <input
-                className="inp"
-                value={form.id}
-                onChange={(e) => setForm({ ...form, id: e.target.value })}
-                placeholder="openrouter"
-              />
-            </Field>
-            <Field label="Name">
-              <input
-                className="inp"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="OpenRouter"
-              />
-            </Field>
-            <Field label="Type">
-              <select
-                className="inp"
-                value={form.type}
-                onChange={(e) =>
-                  setForm({ ...form, type: e.target.value as ProviderType })
-                }
-              >
-                <option value="openai">openai (compatible)</option>
-                <option value="anthropic">anthropic</option>
-              </select>
-            </Field>
-            <Field label="Base URL">
-              <input
-                className="inp"
-                value={form.baseUrl}
-                onChange={(e) => setForm({ ...form, baseUrl: e.target.value })}
-                placeholder="https://openrouter.ai/api/v1"
-              />
-            </Field>
-            <Field label="API key (blank = keep existing)">
-              <input
-                className="inp"
-                type="password"
-                value={form.apiKey}
-                onChange={(e) => setForm({ ...form, apiKey: e.target.value })}
-                placeholder="sk-…"
-              />
-            </Field>
-            <Field label="Default model (optional)">
-              <input
-                className="inp"
-                value={form.defaultModel}
-                onChange={(e) =>
-                  setForm({ ...form, defaultModel: e.target.value })
-                }
-                placeholder="hermes-agent"
-              />
-            </Field>
-            <div className="sm:col-span-2">
-              <Field label="Models (comma-separated)">
+        {/* Provider rows */}
+        <div className="border border-hair divide-y divide-hair">
+          {providers.map((p) => (
+            <div
+              key={p.id}
+              className="flex flex-wrap items-center gap-2 bg-ground px-4 py-3 hover:bg-panel"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="status-dot status-dot-malach" />
+                  <span className="font-mono text-[13px] font-medium text-marble">
+                    {p.name}
+                  </span>
+                  <span className="border border-hair px-1.5 py-0.5 font-mono text-[10px] text-muted">
+                    {p.type}
+                  </span>
+                  {p.enabled === false && (
+                    <span className="border border-hair px-1.5 py-0.5 font-mono text-[10px] text-mutedlo">
+                      disabled
+                    </span>
+                  )}
+                  {!p.hasKey && p.type !== "openai" && (
+                    <span className="border border-carnelian px-1.5 py-0.5 font-mono text-[10px] text-carnelian">
+                      no key
+                    </span>
+                  )}
+                </div>
+                <div className="mt-0.5 truncate font-mono text-[11px] text-muted">
+                  {p.baseUrl}
+                </div>
+                <div className="truncate font-mono text-[11px] text-gold">
+                  {p.models.join(", ") || "no models"}
+                </div>
+              </div>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => test(p.id)}
+                  className="border border-hair px-2.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.1em] text-parch hover:border-malach hover:text-malach"
+                >
+                  TEST
+                </button>
+                <button
+                  onClick={() => startEdit(p)}
+                  className="border border-hair px-2.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.1em] text-parch hover:border-lapis hover:text-lapis"
+                >
+                  EDIT
+                </button>
+                <button
+                  onClick={() => remove(p.id)}
+                  className="border border-hair px-2.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.1em] text-carnelian hover:bg-carnelian/10"
+                >
+                  DELETE
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {!editing ? (
+          <button
+            onClick={startNew}
+            className="btn-ghost-gold mt-4 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em]"
+          >
+            ❯ ADD PROVIDER
+          </button>
+        ) : (
+          <div className="mt-6 space-y-3 border border-hair bg-panel p-4">
+            <h2 className="font-mono text-[12px] uppercase tracking-[0.18em] text-muted">
+              {form.id ? "Edit" : "New"} Provider
+            </h2>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="ID (slug)">
                 <input
                   className="inp"
-                  value={form.models}
-                  onChange={(e) => setForm({ ...form, models: e.target.value })}
-                  placeholder="hermes-agent, gpt-4o-mini"
+                  value={form.id}
+                  onChange={(e) => setForm({ ...form, id: e.target.value })}
+                  placeholder="openrouter"
                 />
               </Field>
+              <Field label="Name">
+                <input
+                  className="inp"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="OpenRouter"
+                />
+              </Field>
+              <Field label="Type">
+                <select
+                  className="inp"
+                  value={form.type}
+                  onChange={(e) =>
+                    setForm({ ...form, type: e.target.value as ProviderType })
+                  }
+                >
+                  <option value="openai">openai (compatible)</option>
+                  <option value="anthropic">anthropic</option>
+                </select>
+              </Field>
+              <Field label="Base URL">
+                <input
+                  className="inp"
+                  value={form.baseUrl}
+                  onChange={(e) =>
+                    setForm({ ...form, baseUrl: e.target.value })
+                  }
+                  placeholder="https://openrouter.ai/api/v1"
+                />
+              </Field>
+              <Field label="API key (blank = keep existing)">
+                <input
+                  className="inp"
+                  type="password"
+                  value={form.apiKey}
+                  onChange={(e) =>
+                    setForm({ ...form, apiKey: e.target.value })
+                  }
+                  placeholder="sk-…"
+                />
+              </Field>
+              <Field label="Default model (optional)">
+                <input
+                  className="inp"
+                  value={form.defaultModel}
+                  onChange={(e) =>
+                    setForm({ ...form, defaultModel: e.target.value })
+                  }
+                  placeholder="hermes-agent"
+                />
+              </Field>
+              <div className="sm:col-span-2">
+                <Field label="Models (comma-separated)">
+                  <input
+                    className="inp"
+                    value={form.models}
+                    onChange={(e) =>
+                      setForm({ ...form, models: e.target.value })
+                    }
+                    placeholder="hermes-agent, gpt-4o-mini"
+                  />
+                </Field>
+              </div>
+              <label className="flex items-center gap-2 font-mono text-[12px] uppercase tracking-[0.1em] text-muted">
+                <input
+                  type="checkbox"
+                  checked={form.enabled}
+                  onChange={(e) =>
+                    setForm({ ...form, enabled: e.target.checked })
+                  }
+                  className="accent-gold"
+                />
+                Enabled
+              </label>
             </div>
-            <label className="flex items-center gap-2 text-sm text-slate-300">
-              <input
-                type="checkbox"
-                checked={form.enabled}
-                onChange={(e) =>
-                  setForm({ ...form, enabled: e.target.checked })
-                }
-              />
-              Enabled
-            </label>
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={save}
+                className="btn-gold px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em]"
+              >
+                SAVE
+              </button>
+              <button
+                onClick={() => {
+                  setEditing(false);
+                  setForm(BLANK);
+                }}
+                className="border border-hair px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-parch hover:border-hairlit hover:text-marble"
+              >
+                CANCEL
+              </button>
+            </div>
           </div>
-          <div className="flex gap-2 pt-1">
-            <button
-              onClick={save}
-              className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-amber-400"
-            >
-              Save
-            </button>
-            <button
-              onClick={() => {
-                setEditing(false);
-                setForm(BLANK);
-              }}
-              className="rounded-lg border border-slate-700 px-4 py-2 text-sm hover:bg-slate-800"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <style jsx>{`
         :global(.inp) {
           width: 100%;
-          border-radius: 0.5rem;
-          border: 1px solid #334155;
-          background: #0f172a;
+          background: var(--void);
+          border: 1px solid var(--hairlit);
           padding: 0.5rem 0.75rem;
-          font-size: 0.875rem;
+          font-family: var(--font-mono), ui-monospace, monospace;
+          font-size: 0.8125rem;
+          color: var(--marble);
           outline: none;
         }
         :global(.inp:focus) {
-          border-color: #f59e0b;
+          border-color: var(--gold);
+          box-shadow: 0 0 0 1px var(--gold), 0 0 18px rgba(201, 162, 75, 0.18);
+        }
+        :global(.inp::placeholder) {
+          color: var(--mutedlo);
         }
       `}</style>
     </div>
@@ -329,8 +366,10 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className="block text-sm">
-      <span className="mb-1 block text-slate-400">{label}</span>
+    <label className="block">
+      <span className="mb-1 block font-mono text-[11px] uppercase tracking-[0.12em] text-muted">
+        {label}
+      </span>
       {children}
     </label>
   );

@@ -23,14 +23,23 @@ export function MessageList({
   if (visible.length === 0) {
     return (
       <div className="flex h-full items-center justify-center px-6 text-center">
-        <div className="max-w-md space-y-2 text-slate-400">
-          <div className="text-4xl">⚡</div>
-          <h2 className="text-lg font-medium text-slate-200">
-            Chat with your agents
-          </h2>
-          <p className="text-sm">
-            Pick a provider above and start typing. Hermes Agent is ready out of
-            the box — add more providers in Settings.
+        <div className="max-w-md">
+          <div className="mb-6 font-mono text-[11px] uppercase tracking-[0.34em] text-lapis">
+            ❯ THE MIND IS ITS OWN PLACE
+          </div>
+          <h1 className="mb-4 font-display text-[46px] font-semibold uppercase tracking-[0.1em] text-marble">
+            NIPHATES
+          </h1>
+          <div
+            className="mx-auto mb-5 h-px w-48"
+            style={{
+              background:
+                "linear-gradient(to right, transparent, var(--gold), transparent)",
+            }}
+          />
+          <p className="font-read italic text-[16px] text-parch">
+            Summon the agent. Hermes is ready out of the box — add more
+            providers in Settings.
           </p>
         </div>
       </div>
@@ -38,31 +47,45 @@ export function MessageList({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-6">
+    <div className="mx-auto flex w-full max-w-[760px] flex-col gap-7 px-6 py-[34px] pb-10">
       {visible.map((m, i) => {
         const isUser = m.role === "user";
         const isLast = i === visible.length - 1;
         const waiting = !isUser && !m.content && streaming && isLast;
-        return (
-          <div
-            key={i}
-            className={isUser ? "flex justify-end" : "flex justify-start"}
-          >
-            <div
-              className={
-                isUser
-                  ? "max-w-[85%] rounded-2xl rounded-br-sm bg-amber-500/90 px-4 py-2.5 text-slate-950"
-                  : "max-w-[85%] rounded-2xl rounded-bl-sm bg-slate-800/80 px-4 py-2.5 text-slate-100"
-              }
-            >
-              {waiting ? (
-                <Thinking />
-              ) : isUser ? (
-                <div className="msg-content text-[0.95rem] whitespace-pre-wrap break-words">
+
+        if (isUser) {
+          return (
+            <div key={i} className="flex justify-end">
+              <div className="max-w-[75%] border-r-2 border-gold pr-4">
+                <div className="mb-1 text-right font-mono text-[10.5px] uppercase tracking-[0.28em] text-gold">
+                  OPERATOR
+                </div>
+                <div className="whitespace-pre-wrap break-words font-mono text-[14px] text-parchdk">
                   {m.content}
                 </div>
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div key={i} className="flex justify-start">
+            <div className="max-w-[75%] border-l-2 border-porphyry pl-4">
+              <div className="mb-1 font-mono text-[10.5px] uppercase tracking-[0.28em] text-porphlbl">
+                NIPHATES
+              </div>
+              {waiting ? (
+                <div className="flex items-center gap-3">
+                  <span
+                    className="status-dot status-dot-gold glow-pulse"
+                    aria-hidden="true"
+                  />
+                  <span className="font-read italic text-[16px] text-parch">
+                    summoning…
+                  </span>
+                </div>
               ) : (
-                <div className="msg-content text-[0.95rem]">
+                <div className="msg-content font-read text-[18px] leading-[1.62] text-agentbody">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {m.content}
                   </ReactMarkdown>
@@ -73,18 +96,6 @@ export function MessageList({
         );
       })}
       <div ref={endRef} />
-    </div>
-  );
-}
-
-function Thinking() {
-  return (
-    <div className="flex items-center gap-2 py-0.5 text-slate-400">
-      <span
-        className="h-4 w-4 animate-spin rounded-full border-2 border-slate-600 border-t-amber-400"
-        aria-hidden="true"
-      />
-      <span className="text-sm">Thinking…</span>
     </div>
   );
 }
