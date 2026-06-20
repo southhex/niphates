@@ -79,7 +79,7 @@ export function Sidebar({
           </button>
         </div>
 
-        {/* Conversation list */}
+        {/* Conversation list (active) */}
         <nav className="mt-2 flex-1 overflow-y-auto px-2 pb-2">
           {active.length === 0 && archived.length === 0 && (
             <p className="px-2 py-4 font-mono text-[11px] text-mutedlo">
@@ -98,31 +98,32 @@ export function Sidebar({
               onDelete={onDelete}
             />
           ))}
-
-          {archived.length > 0 && (
-            <details className="mt-2 group/arch">
-              <summary className="cursor-pointer list-none border-t border-hair px-2 py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted hover:text-parch">
-                <span className="inline-block transition group-open/arch:rotate-90">
-                  ▸
-                </span>{" "}
-                ARCHIVED · {archived.length}
-              </summary>
-              <div className="mt-1">
-                {archived.map((c) => (
-                  <ChatRow
-                    key={c.id}
-                    c={c}
-                    activeId={activeId}
-                    onSelect={onSelect}
-                    onArchive={onArchive}
-                    onUnarchive={onUnarchive}
-                    onDelete={onDelete}
-                  />
-                ))}
-              </div>
-            </details>
-          )}
         </nav>
+
+        {/* Archived — pinned above the footer */}
+        {archived.length > 0 && (
+          <details className="group/arch border-t border-hair">
+            <summary className="cursor-pointer list-none px-3 py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted hover:text-parch">
+              <span className="inline-block transition group-open/arch:rotate-90">
+                ▸
+              </span>{" "}
+              ARCHIVED · {archived.length}
+            </summary>
+            <div className="max-h-48 overflow-y-auto px-2 pb-2">
+              {archived.map((c) => (
+                <ChatRow
+                  key={c.id}
+                  c={c}
+                  activeId={activeId}
+                  onSelect={onSelect}
+                  onArchive={onArchive}
+                  onUnarchive={onUnarchive}
+                  onDelete={onDelete}
+                />
+              ))}
+            </div>
+          </details>
+        )}
 
         {/* Footer — bottom inset so links clear the home indicator */}
         <div className="space-y-0.5 border-t border-hair p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
