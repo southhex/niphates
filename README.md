@@ -30,12 +30,21 @@ npm run dev                  # http://localhost:3000
 For production / self-hosting:
 
 ```bash
-npm run build
-npm run start                # serves on :3000 (PWA + service worker active)
+npm run build                # → .next
+npm run start                # serves on :3000
 ```
 
-> The service worker only registers in production builds, so dev reloads aren't
-> fought by the cache.
+> **PWA / service worker:** the service worker only registers in production builds
+> **and only in a secure context** (HTTPS or `localhost`). Served over plain HTTP on
+> a LAN IP (e.g. `http://10.0.0.5:3000`) it never registers — the app still works,
+> but there's no offline support and "Add to Home Screen" is just a styled shortcut.
+> For the full installable PWA, put it behind HTTPS (a reverse proxy with a cert, or
+> `tailscale serve`).
+
+> **Build dirs:** `next dev` writes to `.next-dev` while `next build`/`next start`
+> use `.next`, so you can run dev and a production build from the same folder without
+> them corrupting each other. To run both at once, give prod its own port:
+> `PORT=3001 npm run start`.
 
 ## Configuration
 
