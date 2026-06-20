@@ -55,43 +55,39 @@ export function MessageList({
 
         if (isUser) {
           return (
-            <div key={i} className="flex justify-end">
-              <div className="max-w-[85%] border-r-2 border-gold pr-4 md:max-w-[75%]">
-                <div className="mb-1 text-right font-mono text-[12px] uppercase tracking-[0.28em] text-gold md:text-[10.5px]">
-                  OPERATOR
-                </div>
-                <div className="whitespace-pre-wrap break-words font-mono text-[16px] text-parchdk md:text-[14px]">
-                  {m.content}
-                </div>
+            <div key={i} className="border border-hair bg-panel px-4 py-3">
+              <div className="mb-1 font-mono text-[12px] uppercase tracking-[0.28em] text-gold md:text-[10.5px]">
+                OPERATOR
+              </div>
+              <div className="whitespace-pre-wrap break-words font-mono text-[16px] text-parchdk md:text-[14px]">
+                {m.content}
               </div>
             </div>
           );
         }
 
         return (
-          <div key={i} className="flex justify-start">
-            <div className="max-w-[85%] border-l-2 border-porphyry pl-4 md:max-w-[75%]">
-              <div className="mb-1 font-mono text-[12px] uppercase tracking-[0.28em] text-porphlbl md:text-[10.5px]">
-                NIPHATES
-              </div>
-              {waiting ? (
-                <div className="flex items-center gap-3">
-                  <span
-                    className="status-dot status-dot-gold glow-pulse"
-                    aria-hidden="true"
-                  />
-                  <span className="font-read italic text-[16px] text-parch">
-                    summoning…
-                  </span>
-                </div>
-              ) : (
-                <div className="msg-content font-read text-[18px] leading-[1.62] text-agentbody">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {m.content}
-                  </ReactMarkdown>
-                </div>
-              )}
+          <div key={i}>
+            <div className="mb-1 font-mono text-[12px] uppercase tracking-[0.28em] text-porphlbl md:text-[10.5px]">
+              NIPHATES
             </div>
+            {waiting ? (
+              <div className="flex items-center gap-3">
+                <span
+                  className="status-dot status-dot-gold glow-pulse"
+                  aria-hidden="true"
+                />
+                <span className="font-read italic text-[16px] text-parch">
+                  summoning…
+                </span>
+              </div>
+            ) : (
+              <div className="msg-content font-read text-[18px] leading-[1.62] text-agentbody">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {m.content}
+                </ReactMarkdown>
+              </div>
+            )}
           </div>
         );
       })}
