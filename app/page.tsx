@@ -85,7 +85,38 @@ export default function Home() {
   const handleDelete = (id: string) => {
     const list = conversations.filter((c) => c.id !== id);
     persist(list);
-    if (activeId === id) setActiveId(list[0]?.id ?? null);
+    if (activeId === id) {
+      const next = list.find((c) => !c.archived) ?? list[0];
+      setActiveId(next?.id ?? null);
+    }
+  };
+
+  const setArchived = (id: string, archived: boolean) => {
+    const list = conversations.map((c) =>
+      c.id === id ? { ...c, archived, updatedAt: Date.now() } : c,
+    );
+    persist(list);
+    // Step off an archived chat so the main view doesn't sit on a hidden one.
+    if (archived && activeId === id) {
+      const next = list.find((c) => !c.archived);
+      setActiveId(next?.id ?? null);
+    }
+  };
+
+  const handleArchive = (id: string) => setArchived(id, true);
+  const handleUnarchive = (id: string) => setArchived(id, false);
+
+  // Write a provider/model change straight onto the active conversation so the
+  // dropdown is a live switch, not just a setting for the next message.
+  const applyModelToActive = (nextProviderId: string, nextModel: string) => {
+    if (!activeId) return;
+    persist(
+      conversations.map((c) =>
+        c.id === activeId
+          ? { ...c, providerId: nextProviderId, model: nextModel }
+          : c,
+      ),
+    );
   };
 
   const onProviderChange = (id: string) => {
@@ -93,6 +124,12 @@ export default function Home() {
     const p = providers.find((x) => x.id === id);
     const m = p?.defaultModel || p?.models[0] || "";
     setModel(m);
+    applyModelToActive(id, m);
+  };
+
+  const onModelChange = (m: string) => {
+    setModel(m);
+    applyModelToActive(providerId, m);
   };
 
   // --- Send a message ----------------------------------------------------
@@ -193,6 +230,8 @@ export default function Home() {
           setSidebarOpen(false);
         }}
         onNew={handleNew}
+        onArchive={handleArchive}
+        onUnarchive={handleUnarchive}
         onDelete={handleDelete}
         onClose={() => setSidebarOpen(false)}
       />
@@ -225,9 +264,10 @@ export default function Home() {
 
             <select
               value={model}
-              onChange={(e) => setModel(e.target.value)}
+              onChange={(e) => onModelChange(e.target.value)}
               disabled={!currentProvider || currentProvider.models.length === 0}
-              className="min-w-0 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm outline-none focus:border-amber-500"
+              aria-label="Model"
+              className="min-w-[10rem] flex-1 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm font-medium outline-none focus:border-amber-500"
             >
               {(currentProvider?.models || []).map((m) => (
                 <option key={m} value={m}>

@@ -50,6 +50,7 @@ export const conversationSchema = z.object({
   messages: z.array(chatMessageSchema),
   createdAt: z.number(),
   updatedAt: z.number(),
+  archived: z.boolean().optional(),
 });
 
 export const conversationsSchema = z.array(conversationSchema);

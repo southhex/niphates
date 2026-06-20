@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { ChatMessage } from "@/lib/types";
 
 export function MessageList({
@@ -37,27 +39,52 @@ export function MessageList({
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-6">
-      {visible.map((m, i) => (
-        <div
-          key={i}
-          className={
-            m.role === "user" ? "flex justify-end" : "flex justify-start"
-          }
-        >
+      {visible.map((m, i) => {
+        const isUser = m.role === "user";
+        const isLast = i === visible.length - 1;
+        const waiting = !isUser && !m.content && streaming && isLast;
+        return (
           <div
-            className={
-              m.role === "user"
-                ? "max-w-[85%] rounded-2xl rounded-br-sm bg-amber-500/90 px-4 py-2.5 text-slate-950"
-                : "max-w-[85%] rounded-2xl rounded-bl-sm bg-slate-800/80 px-4 py-2.5 text-slate-100"
-            }
+            key={i}
+            className={isUser ? "flex justify-end" : "flex justify-start"}
           >
-            <div className="msg-content text-[0.95rem]">
-              {m.content || (streaming && i === visible.length - 1 ? "▍" : "")}
+            <div
+              className={
+                isUser
+                  ? "max-w-[85%] rounded-2xl rounded-br-sm bg-amber-500/90 px-4 py-2.5 text-slate-950"
+                  : "max-w-[85%] rounded-2xl rounded-bl-sm bg-slate-800/80 px-4 py-2.5 text-slate-100"
+              }
+            >
+              {waiting ? (
+                <Thinking />
+              ) : isUser ? (
+                <div className="msg-content text-[0.95rem] whitespace-pre-wrap break-words">
+                  {m.content}
+                </div>
+              ) : (
+                <div className="msg-content text-[0.95rem]">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {m.content}
+                  </ReactMarkdown>
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
       <div ref={endRef} />
+    </div>
+  );
+}
+
+function Thinking() {
+  return (
+    <div className="flex items-center gap-2 py-0.5 text-slate-400">
+      <span
+        className="h-4 w-4 animate-spin rounded-full border-2 border-slate-600 border-t-amber-400"
+        aria-hidden="true"
+      />
+      <span className="text-sm">Thinking…</span>
     </div>
   );
 }
