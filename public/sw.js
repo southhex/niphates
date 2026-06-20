@@ -2,7 +2,7 @@
 // launch, serve navigations with a network-first strategy (so updates land),
 // and never cache API calls. Bump CACHE on shipping breaking asset changes.
 
-const CACHE = "hermes-chat-v1";
+const CACHE = "niphates-v1";
 const APP_SHELL = ["/", "/settings", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {

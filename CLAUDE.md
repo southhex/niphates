@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Hermes Chat — a self-hosted, installable (PWA) multi-provider LLM chat app built on
+Niphates — a self-hosted, installable (PWA) multi-provider LLM chat app built on
 Next.js 15 (App Router) + React 19 + TypeScript + Tailwind. The default/priority
 provider is **Hermes Agent**; it also talks to Ollama, OpenRouter, KiloCode, OpenAI,
 and Anthropic. Single-user by design: no auth, config lives in flat JSON files on disk.

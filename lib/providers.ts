@@ -60,7 +60,7 @@ function seedFromEnv(): Provider[] {
         .filter(Boolean),
       extraHeaders: {
         "HTTP-Referer": process.env.APP_URL || "http://localhost:3000",
-        "X-Title": "Hermes Chat",
+        "X-Title": "Niphates",
       },
       enabled: true,
     });
