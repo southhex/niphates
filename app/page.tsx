@@ -32,7 +32,6 @@ export default function Home() {
     loadConversations().then((convos) => {
       if (cancelled) return;
       setConversations(convos);
-      if (convos[0]) setActiveId(convos[0].id);
     });
 
     fetch("/api/providers")
