@@ -62,8 +62,10 @@ body {
   color: var(--marble);
   font-family: var(--font-mono), ui-monospace, monospace;
   -webkit-font-smoothing: antialiased;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right)
-    env(safe-area-inset-bottom) env(safe-area-inset-left);
+  /* Safe-area insets live on the header/composer/sidebar bars, NOT here —
+     padding on the body would stack on top of the 100dvh shell and overflow
+     the viewport, forcing a scroll to reach the top bar or composer. */
+  overscroll-behavior: none;
 }
 
 /* Sharp corners everywhere */

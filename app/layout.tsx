@@ -47,6 +47,10 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: "cover",
+  // Shrink the layout viewport when the on-screen keyboard opens, so the
+  // h-[100dvh] shell contracts and the composer rides up on top of the
+  // keyboard instead of being hidden behind it.
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({

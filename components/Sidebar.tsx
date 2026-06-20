@@ -52,12 +52,12 @@ export function Sidebar({
         />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-30 flex w-[264px] flex-col border-r border-hair bg-paneldk transition-transform md:static md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-30 flex w-[264px] flex-col border-r border-hair bg-paneldk pl-[env(safe-area-inset-left)] transition-transform md:static md:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        {/* Brand */}
-        <div className="flex items-center justify-between border-b border-hair px-4 py-3">
+        {/* Brand — top inset so it clears the notch when the drawer is open */}
+        <div className="flex items-center justify-between border-b border-hair px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
           <span className="font-display text-[18px] font-semibold uppercase tracking-[0.14em] text-marble">
             NIPHATES
           </span>
@@ -73,7 +73,7 @@ export function Sidebar({
         <div className="px-3 pt-3">
           <button
             onClick={onNew}
-            className="btn-ghost-gold w-full px-3 py-2 font-mono text-[10.5px] uppercase tracking-[0.18em]"
+            className="btn-ghost-gold w-full px-3 py-2.5 font-mono text-[12px] uppercase tracking-[0.18em] md:py-2 md:text-[10.5px]"
           >
             ❯ NEW DIALOGUE
           </button>
@@ -124,17 +124,17 @@ export function Sidebar({
           )}
         </nav>
 
-        {/* Footer */}
-        <div className="space-y-0.5 border-t border-hair p-3">
+        {/* Footer — bottom inset so links clear the home indicator */}
+        <div className="space-y-0.5 border-t border-hair p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
           <Link
             href="/hermes"
-            className="block px-3 py-2 font-mono text-[11px] uppercase tracking-[0.16em] text-parch hover:bg-panel hover:text-marble"
+            className="block px-3 py-2.5 font-mono text-[14px] uppercase tracking-[0.16em] text-parch hover:bg-panel hover:text-marble md:py-2 md:text-[11px]"
           >
             ⚡ CONTROL
           </Link>
           <Link
             href="/settings"
-            className="block px-3 py-2 font-mono text-[11px] uppercase tracking-[0.16em] text-parch hover:bg-panel hover:text-marble"
+            className="block px-3 py-2.5 font-mono text-[14px] uppercase tracking-[0.16em] text-parch hover:bg-panel hover:text-marble md:py-2 md:text-[11px]"
           >
             ⚙ SETTINGS
           </Link>
@@ -143,7 +143,7 @@ export function Sidebar({
           <div className="mt-2 flex border border-hair">
             <button
               onClick={() => toggleTheme("obsidian")}
-              className={`flex-1 px-2 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] transition-colors ${
+              className={`flex-1 px-2 py-2 font-mono text-[12px] uppercase tracking-[0.16em] transition-colors md:py-1.5 md:text-[10px] ${
                 theme === "obsidian"
                   ? "bg-gold text-goldink"
                   : "text-muted hover:text-marble"
@@ -153,7 +153,7 @@ export function Sidebar({
             </button>
             <button
               onClick={() => toggleTheme("marble")}
-              className={`flex-1 border-l border-hair px-2 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] transition-colors ${
+              className={`flex-1 border-l border-hair px-2 py-2 font-mono text-[12px] uppercase tracking-[0.16em] transition-colors md:py-1.5 md:text-[10px] ${
                 theme === "marble"
                   ? "bg-gold text-goldink"
                   : "text-muted hover:text-marble"
@@ -223,15 +223,17 @@ function ChatRow({
     >
       <button
         onClick={() => onSelect(c.id)}
-        className="flex-1 truncate py-2 text-left font-mono text-[12.5px]"
+        className="flex-1 truncate py-2.5 text-left font-mono text-[15px] md:py-2 md:text-[12.5px]"
         title={c.title}
       >
         {c.title}
       </button>
       <button
         onClick={() => setMenuOpen((v) => !v)}
-        className={`px-1 text-muted transition hover:text-marble ${
-          menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+        className={`px-2 py-1 text-[18px] leading-none text-muted transition hover:text-marble md:px-1 md:text-base ${
+          menuOpen
+            ? "opacity-100"
+            : "opacity-100 md:opacity-0 md:group-hover:opacity-100"
         }`}
         aria-label="Conversation options"
         aria-haspopup="menu"
@@ -252,7 +254,7 @@ function ChatRow({
                 setMenuOpen(false);
                 onUnarchive(c.id);
               }}
-              className="block w-full px-3 py-1.5 text-left font-mono text-[12px] uppercase tracking-[0.1em] text-parchdk hover:bg-panel2"
+              className="block w-full px-3 py-2.5 text-left font-mono text-[14px] uppercase tracking-[0.1em] md:py-1.5 md:text-[12px] text-parchdk hover:bg-panel2"
             >
               UNARCHIVE
             </button>
@@ -263,7 +265,7 @@ function ChatRow({
                 setMenuOpen(false);
                 onArchive(c.id);
               }}
-              className="block w-full px-3 py-1.5 text-left font-mono text-[12px] uppercase tracking-[0.1em] text-parchdk hover:bg-panel2"
+              className="block w-full px-3 py-2.5 text-left font-mono text-[14px] uppercase tracking-[0.1em] md:py-1.5 md:text-[12px] text-parchdk hover:bg-panel2"
             >
               ARCHIVE
             </button>
@@ -271,7 +273,7 @@ function ChatRow({
           <button
             role="menuitem"
             onClick={handleDelete}
-            className="block w-full px-3 py-1.5 text-left font-mono text-[12px] uppercase tracking-[0.1em] text-carnelian hover:bg-panel2"
+            className="block w-full px-3 py-2.5 text-left font-mono text-[14px] uppercase tracking-[0.1em] md:py-1.5 md:text-[12px] text-carnelian hover:bg-panel2"
           >
             DELETE
           </button>

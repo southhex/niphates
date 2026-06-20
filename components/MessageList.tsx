@@ -47,7 +47,7 @@ export function MessageList({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-[760px] flex-col gap-7 px-6 py-[34px] pb-10">
+    <div className="mx-auto flex w-full max-w-[760px] flex-col gap-6 px-4 py-6 pb-8 md:gap-7 md:px-6 md:py-[34px] md:pb-10">
       {visible.map((m, i) => {
         const isUser = m.role === "user";
         const isLast = i === visible.length - 1;
@@ -56,11 +56,11 @@ export function MessageList({
         if (isUser) {
           return (
             <div key={i} className="flex justify-end">
-              <div className="max-w-[75%] border-r-2 border-gold pr-4">
-                <div className="mb-1 text-right font-mono text-[10.5px] uppercase tracking-[0.28em] text-gold">
+              <div className="max-w-[85%] border-r-2 border-gold pr-4 md:max-w-[75%]">
+                <div className="mb-1 text-right font-mono text-[12px] uppercase tracking-[0.28em] text-gold md:text-[10.5px]">
                   OPERATOR
                 </div>
-                <div className="whitespace-pre-wrap break-words font-mono text-[14px] text-parchdk">
+                <div className="whitespace-pre-wrap break-words font-mono text-[16px] text-parchdk md:text-[14px]">
                   {m.content}
                 </div>
               </div>
@@ -70,8 +70,8 @@ export function MessageList({
 
         return (
           <div key={i} className="flex justify-start">
-            <div className="max-w-[75%] border-l-2 border-porphyry pl-4">
-              <div className="mb-1 font-mono text-[10.5px] uppercase tracking-[0.28em] text-porphlbl">
+            <div className="max-w-[85%] border-l-2 border-porphyry pl-4 md:max-w-[75%]">
+              <div className="mb-1 font-mono text-[12px] uppercase tracking-[0.28em] text-porphlbl md:text-[10.5px]">
                 NIPHATES
               </div>
               {waiting ? (

@@ -97,7 +97,7 @@ export function Select({
               onChange(o.value);
               setOpen(false);
             }}
-            className={`block w-full px-3 py-2 text-left font-mono text-[12.5px] hover:bg-panel2 ${
+            className={`block w-full px-3 py-2.5 text-left font-mono text-[14px] hover:bg-panel2 md:py-2 md:text-[12.5px] ${
               o.value === value ? "text-gold" : "text-parchdk"
             }`}
           >
@@ -118,7 +118,7 @@ export function Select({
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span className={`font-mono text-[12.5px] ${valueClassName}`}>
+        <span className={`font-mono text-[14px] md:text-[12.5px] ${valueClassName}`}>
           {label}
         </span>
         <span

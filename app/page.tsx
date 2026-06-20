@@ -238,10 +238,10 @@ export default function Home() {
       />
 
       <main className="flex min-w-0 flex-1 flex-col">
-        {/* Header */}
-        <header className="flex items-center gap-2 border-b border-hair bg-paneldk px-3 py-2">
+        {/* Header — top/horizontal safe-area insets so it clears the notch */}
+        <header className="flex items-center gap-2 border-b border-hair bg-paneldk pb-2 pl-[calc(0.75rem+env(safe-area-inset-left))] pr-[calc(0.75rem+env(safe-area-inset-right))] pt-[calc(0.5rem+env(safe-area-inset-top))]">
           <button
-            className="p-2 font-mono text-parch hover:text-marble md:hidden"
+            className="-ml-1 p-2.5 font-mono text-[20px] leading-none text-parch hover:text-marble md:hidden"
             onClick={() => setSidebarOpen(true)}
             aria-label="Open menu"
           >
@@ -250,7 +250,7 @@ export default function Home() {
 
           <div className="flex flex-1 items-center gap-2 overflow-x-auto">
             {/* Provider chip */}
-            <div className="flex items-center gap-1.5 border border-hair bg-panel px-2.5 py-1.5">
+            <div className="flex items-center gap-1.5 border border-hair bg-panel px-3 py-2 md:px-2.5 md:py-1.5">
               <span className="status-dot status-dot-malach" />
               <Select
                 value={providerId}
@@ -263,7 +263,7 @@ export default function Home() {
             </div>
 
             {/* Model chip */}
-            <div className="flex items-center gap-1 border border-hair bg-panel px-2.5 py-1.5">
+            <div className="flex items-center gap-1 border border-hair bg-panel px-3 py-2 md:px-2.5 md:py-1.5">
               <Select
                 value={model}
                 onChange={onModelChange}

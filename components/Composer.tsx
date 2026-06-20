@@ -34,12 +34,12 @@ export function Composer({
   };
 
   return (
-    <div className="border-t border-hair bg-paneldk px-4 py-3">
+    <div className="border-t border-hair bg-paneldk pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))] pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
       <div className="mx-auto flex w-full max-w-[760px] items-end gap-2">
         {/* Terminal field */}
-        <div className="term-field flex flex-1 items-start gap-2 px-3 py-2.5">
+        <div className="term-field flex flex-1 items-start gap-2 px-3 py-3 md:py-2.5">
           <span
-            className="mt-0.5 select-none font-mono text-[13.5px] text-gold"
+            className="mt-0.5 select-none font-mono text-[16px] text-gold md:text-[13.5px]"
             aria-hidden="true"
           >
             ❯
@@ -62,14 +62,14 @@ export function Composer({
                 submit();
               }
             }}
-            className="max-h-52 flex-1 resize-none bg-transparent font-mono text-[13.5px] text-marble outline-none placeholder:text-mutedlo disabled:opacity-50"
+            className="max-h-52 flex-1 resize-none bg-transparent font-mono text-[16px] text-marble outline-none placeholder:text-mutedlo disabled:opacity-50 md:text-[13.5px]"
           />
         </div>
 
         {streaming ? (
           <button
             onClick={onStop}
-            className="border border-hair px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.18em] text-parch hover:border-carnelian hover:text-carnelian"
+            className="border border-hair px-4 py-3 font-mono text-[12px] uppercase tracking-[0.18em] text-parch hover:border-carnelian hover:text-carnelian md:py-2.5 md:text-[11px]"
           >
             STOP
           </button>
@@ -77,7 +77,7 @@ export function Composer({
           <button
             onClick={submit}
             disabled={disabled || !value.trim()}
-            className="btn-gold px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.18em] disabled:cursor-not-allowed disabled:opacity-40"
+            className="btn-gold px-4 py-3 font-mono text-[12px] uppercase tracking-[0.18em] disabled:cursor-not-allowed disabled:opacity-40 md:py-2.5 md:text-[11px]"
           >
             SEND
           </button>
