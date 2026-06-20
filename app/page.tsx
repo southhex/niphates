@@ -54,6 +54,21 @@ export default function Home() {
     };
   }, []);
 
+  // Escape returns to the home view (and closes the mobile sidebar first if open).
+  // Does not abort an in-flight stream — it keeps summoning in the background.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (sidebarOpen) {
+        setSidebarOpen(false);
+        return;
+      }
+      setActiveId(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [sidebarOpen]);
+
   const active = useMemo(
     () => conversations.find((c) => c.id === activeId) || null,
     [conversations, activeId],
