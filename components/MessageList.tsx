@@ -47,7 +47,7 @@ export function MessageList({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-[760px] flex-col gap-6 px-4 py-6 pb-8 md:gap-7 md:px-6 md:py-[34px] md:pb-10">
+    <div className="mx-auto flex w-full max-w-[720px] flex-col gap-5 px-6 pt-[26px] pb-8">
       {visible.map((m, i) => {
         const isUser = m.role === "user";
         const isLast = i === visible.length - 1;
@@ -55,11 +55,11 @@ export function MessageList({
 
         if (isUser) {
           return (
-            <div key={i} className="border border-hair bg-panel px-4 py-3">
-              <div className="mb-1 font-mono text-[12px] uppercase tracking-[0.28em] text-gold md:text-[10.5px]">
+            <div key={i} className="ml-16 border border-hair bg-panel px-4 py-3.5">
+              <div className="mb-1 font-mono text-[10.5px] uppercase tracking-[0.28em] text-gold">
                 OPERATOR
               </div>
-              <div className="whitespace-pre-wrap break-words font-mono text-[16px] text-parchdk md:text-[14px]">
+              <div className="whitespace-pre-wrap break-words font-mono text-[14px] text-parchdk">
                 {m.content}
               </div>
             </div>
@@ -68,7 +68,7 @@ export function MessageList({
 
         return (
           <div key={i}>
-            <div className="mb-1 font-mono text-[12px] uppercase tracking-[0.28em] text-porphlbl md:text-[10.5px]">
+            <div className="mb-1 font-mono text-[10.5px] uppercase tracking-[0.28em] text-porphlbl">
               NIPHATES
             </div>
             {waiting ? (
@@ -82,7 +82,7 @@ export function MessageList({
                 </span>
               </div>
             ) : (
-              <div className="msg-content font-read text-[18px] leading-[1.62] text-agentbody">
+              <div className="msg-content font-read text-[16px] leading-[1.62] text-agentbody">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {m.content}
                 </ReactMarkdown>
