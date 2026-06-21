@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { clampLeft } from "@/lib/dropdownPlacement";
 
 export interface SelectOption {
   value: string;
@@ -35,6 +36,7 @@ export function Select({
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState<Anchor | null>(null);
   const [placement, setPlacement] = useState<"below" | "above">("below");
+  const [left, setLeft] = useState(0);
   const [mounted, setMounted] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -53,6 +55,7 @@ export function Select({
         minWidth: Math.max(rect.width, 120),
       });
       setPlacement("below"); // assume below; the layout effect flips if it'd overflow
+      setLeft(rect.left); // start aligned to the trigger; clamped after measuring
     }
     setOpen(true);
   };
@@ -68,6 +71,16 @@ export function Select({
     const contentHeight = dropdownRef.current.scrollHeight;
     setPlacement(
       contentHeight > spaceBelow && spaceAbove > spaceBelow ? "above" : "below",
+    );
+    // Keep the menu within the viewport horizontally (the model selector sits
+    // near the right edge on a phone, so a wide menu would bleed off-screen).
+    setLeft(
+      clampLeft(
+        anchor.left,
+        dropdownRef.current.offsetWidth,
+        window.innerWidth,
+        margin,
+      ),
     );
   }, [open, anchor]);
 
@@ -99,8 +112,9 @@ export function Select({
         role="listbox"
         style={{
           position: "fixed",
-          left: anchor.left,
+          left,
           minWidth: anchor.minWidth,
+          maxWidth: window.innerWidth - 2 * margin,
           zIndex: 9999,
           maxHeight:
             (placement === "above"
@@ -123,7 +137,7 @@ export function Select({
               onChange(o.value);
               setOpen(false);
             }}
-            className={`block w-full px-3 py-2.5 text-left font-mono text-[14px] hover:bg-panel2 md:py-2 md:text-[12.5px] ${
+            className={`block w-full truncate px-3 py-2.5 text-left font-mono text-[14px] hover:bg-panel2 md:py-2 md:text-[12.5px] ${
               o.value === value ? "text-gold" : "text-parchdk"
             }`}
           >
