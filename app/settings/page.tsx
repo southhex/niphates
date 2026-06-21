@@ -32,6 +32,22 @@ export default function SettingsPage() {
   const [editing, setEditing] = useState(false);
   const [status, setStatus] = useState<string>("");
 
+  const [theme, setTheme] = useState<"obsidian" | "marble">("obsidian");
+
+  useEffect(() => {
+    const stored = localStorage.getItem("niphates-theme") as
+      | "obsidian"
+      | "marble"
+      | null;
+    if (stored) setTheme(stored);
+  }, []);
+
+  const toggleTheme = (t: "obsidian" | "marble") => {
+    setTheme(t);
+    localStorage.setItem("niphates-theme", t);
+    document.documentElement.setAttribute("data-theme", t);
+  };
+
   const refresh = () =>
     fetch("/api/providers")
       .then((r) => r.json())
@@ -145,6 +161,38 @@ export default function SettingsPage() {
       </div>
 
       <div className="mx-auto max-w-3xl px-4 py-8">
+        {/* Appearance */}
+        <div className="mb-10">
+          <div className="mb-6 flex items-center gap-3">
+            <span className="font-display text-[20px] text-gold">☾</span>
+            <h1 className="font-display text-[32px] font-semibold uppercase tracking-[0.08em] text-marble">
+              Appearance
+            </h1>
+          </div>
+          <div className="flex max-w-[340px] border border-hair">
+            <button
+              onClick={() => toggleTheme("obsidian")}
+              className={`flex-1 px-3 py-2 font-mono text-[12px] uppercase tracking-[0.16em] transition-colors ${
+                theme === "obsidian"
+                  ? "bg-gold text-goldink"
+                  : "text-muted hover:text-marble"
+              }`}
+            >
+              ☾ OBSIDIAN
+            </button>
+            <button
+              onClick={() => toggleTheme("marble")}
+              className={`flex-1 border-l border-hair px-3 py-2 font-mono text-[12px] uppercase tracking-[0.16em] transition-colors ${
+                theme === "marble"
+                  ? "bg-gold text-goldink"
+                  : "text-muted hover:text-marble"
+              }`}
+            >
+              ☀ MARBLE
+            </button>
+          </div>
+        </div>
+
         {/* Title */}
         <div className="mb-8 flex items-center gap-3">
           <span className="font-display text-[20px] text-gold">§</span>
