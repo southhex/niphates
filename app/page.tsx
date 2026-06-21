@@ -1,10 +1,16 @@
+// app/page.tsx
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { PanelLeft, Settings as SettingsIcon } from "lucide-react";
 import { Sidebar } from "@/components/Sidebar";
 import { MessageList } from "@/components/MessageList";
 import { Composer } from "@/components/Composer";
+import { CommandView } from "@/components/CommandView";
+import { ChamberPlaceholder } from "@/components/ChamberPlaceholder";
 import { Select } from "@/components/Select";
+import { type ChamberId } from "@/components/chambers";
 import { streamChatRequest } from "@/lib/client";
 import {
   loadConversations,
@@ -23,10 +29,21 @@ export default function Home() {
   const [model, setModel] = useState<string>("");
   const [streamingId, setStreamingId] = useState<string | null>(null);
   const [unread, setUnread] = useState<Set<string>>(() => new Set());
+  const [activeChamber, setActiveChamber] = useState<ChamberId>("dialogue");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const streaming = streamingId !== null;
   const activeIdRef = useRef<string | null>(activeId);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Close the drawer on small screens after first mount. Runs once so the
+  // SSR default (open) doesn't desync hydration; desktop stays expanded.
+  useEffect(() => {
+    if (window.matchMedia("(max-width: 767px)").matches) setSidebarOpen(false);
+  }, []);
+
+  const closeOnMobile = () => {
+    if (window.matchMedia("(max-width: 767px)").matches) setSidebarOpen(false);
+  };
 
   // --- Initial load ------------------------------------------------------
   useEffect(() => {
@@ -57,12 +74,11 @@ export default function Home() {
     };
   }, []);
 
-  // Escape returns to the home view (and closes the mobile sidebar first if open).
-  // Does not abort an in-flight stream — it keeps summoning in the background.
+  // Escape returns to the Dialogue home view; on mobile it closes the drawer first.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
-      if (sidebarOpen) {
+      if (sidebarOpen && window.matchMedia("(max-width: 767px)").matches) {
         setSidebarOpen(false);
         return;
       }
@@ -77,14 +93,12 @@ export default function Home() {
     [conversations, activeId],
   );
 
-  // Mirror activeId into a ref so stream-completion callbacks read the latest value.
   useEffect(() => {
     activeIdRef.current = activeId;
   }, [activeId]);
 
   const currentProvider = providers.find((p) => p.id === providerId);
 
-  // Keep model in sync when the active conversation or provider changes.
   useEffect(() => {
     if (active) {
       setProviderId(active.providerId);
@@ -103,12 +117,10 @@ export default function Home() {
     const list = [c, ...conversations];
     persist(list);
     setActiveId(c.id);
-    setSidebarOpen(false);
+    closeOnMobile();
   };
 
   const handleDelete = (id: string) => {
-    // If the chat is mid-stream, abort it — the reply would have nowhere to land,
-    // and otherwise streamingId would stay stuck on a gone conversation.
     if (streamingId === id) {
       abortRef.current?.abort();
       abortRef.current = null;
@@ -133,7 +145,6 @@ export default function Home() {
       c.id === id ? { ...c, archived, updatedAt: Date.now() } : c,
     );
     persist(list);
-    // Step off an archived chat so the main view doesn't sit on a hidden one.
     if (archived && activeId === id) {
       const next = list.find((c) => !c.archived);
       setActiveId(next?.id ?? null);
@@ -143,8 +154,6 @@ export default function Home() {
   const handleArchive = (id: string) => setArchived(id, true);
   const handleUnarchive = (id: string) => setArchived(id, false);
 
-  // Write a provider/model change straight onto the active conversation so the
-  // dropdown is a live switch, not just a setting for the next message.
   const applyModelToActive = (nextProviderId: string, nextModel: string) => {
     if (!activeId) return;
     persist(
@@ -173,7 +182,6 @@ export default function Home() {
   const handleSend = async (text: string) => {
     if (!providerId || !model) return;
 
-    // Ensure there is an active conversation to write into.
     let convo = active;
     let list = conversations;
     if (!convo) {
@@ -199,7 +207,7 @@ export default function Home() {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
 
-    const messagesForApi = withUser.messages.slice(0, -1); // drop empty assistant
+    const messagesForApi = withUser.messages.slice(0, -1);
 
     await streamChatRequest(
       { providerId, model, messages: messagesForApi },
@@ -229,8 +237,7 @@ export default function Home() {
               msgs[msgs.length - 1] = {
                 ...last,
                 content:
-                  (last.content ? last.content + "\n\n" : "") +
-                  `⚠️ ${message}`,
+                  (last.content ? last.content + "\n\n" : "") + `⚠️ ${message}`,
               };
               return { ...c, messages: msgs };
             });
@@ -243,8 +250,6 @@ export default function Home() {
     );
 
     setStreamingId(null);
-    // Flag an unseen reply only if the turn actually completed (wasn't aborted via
-    // STOP or a delete) and landed in a chat the user isn't currently viewing.
     if (!ctrl.signal.aborted && activeIdRef.current !== id) {
       setUnread((prev) => {
         const next = new Set(prev);
@@ -253,7 +258,6 @@ export default function Home() {
       });
     }
     abortRef.current = null;
-    // Persist the finished turn immediately rather than waiting out the debounce.
     void flushConversations();
   };
 
@@ -272,10 +276,17 @@ export default function Home() {
         activeId={activeId}
         streamingId={streamingId}
         unread={unread}
-        open={sidebarOpen}
+        activeChamber={activeChamber}
+        onSelectChamber={(ch) => {
+          setActiveChamber(ch);
+          closeOnMobile();
+        }}
+        sidebarOpen={sidebarOpen}
+        onCollapse={() => setSidebarOpen(false)}
         onSelect={(id) => {
           setActiveId(id);
-          setSidebarOpen(false);
+          setActiveChamber("dialogue");
+          closeOnMobile();
           setUnread((prev) => {
             if (!prev.has(id)) return prev;
             const next = new Set(prev);
@@ -287,21 +298,22 @@ export default function Home() {
         onArchive={handleArchive}
         onUnarchive={handleUnarchive}
         onDelete={handleDelete}
-        onClose={() => setSidebarOpen(false)}
       />
 
       <main className="flex min-w-0 flex-1 flex-col">
-        {/* Header — top/horizontal safe-area insets so it clears the notch */}
-        <header className="flex items-center gap-2 border-b border-hair bg-paneldk pb-2 pl-[calc(0.75rem+env(safe-area-inset-left))] pr-[calc(0.75rem+env(safe-area-inset-right))] pt-[calc(0.5rem+env(safe-area-inset-top))]">
-          <button
-            className="-ml-1 p-2.5 font-mono text-[20px] leading-none text-parch hover:text-marble md:hidden"
-            onClick={() => setSidebarOpen(true)}
-            aria-label="Open menu"
-          >
-            ☰
-          </button>
+        {/* Top bar — transparent, borderless; insets clear the notch */}
+        <header className="flex items-center gap-2 pb-2 pl-[calc(0.75rem+env(safe-area-inset-left))] pr-[calc(0.75rem+env(safe-area-inset-right))] pt-[calc(0.5rem+env(safe-area-inset-top))]">
+          {!sidebarOpen && (
+            <button
+              className="-ml-1 flex h-9 w-9 items-center justify-center text-parch hover:text-marble"
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Show sidebar"
+            >
+              <PanelLeft size={18} />
+            </button>
+          )}
 
-          <div className="flex flex-1 items-center gap-2 overflow-x-auto">
+          <div className="flex flex-1 items-center justify-end gap-2 overflow-x-auto">
             {/* Provider chip */}
             <div className="flex items-center gap-1.5 border border-hair bg-panel px-3 py-2 md:px-2.5 md:py-1.5">
               <span className="status-dot status-dot-malach" />
@@ -315,47 +327,63 @@ export default function Home() {
               />
             </div>
 
+            {/* Settings gear — sole entry point to Settings */}
+            <Link
+              href="/settings"
+              aria-label="Settings"
+              className="flex h-9 w-9 items-center justify-center text-parch hover:text-marble"
+            >
+              <SettingsIcon size={18} />
+            </Link>
           </div>
         </header>
 
-        {/* Messages */}
+        {/* Main pane — swaps by active chamber */}
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          {noProviders ? (
-            <div className="flex h-full items-center justify-center px-6 text-center">
-              <div className="max-w-md">
-                <div className="mb-4 font-display text-[36px] font-semibold uppercase tracking-[0.1em] text-marble">
-                  NIPHATES
+          {activeChamber === "dialogue" ? (
+            noProviders ? (
+              <div className="flex h-full items-center justify-center px-6 text-center">
+                <div className="max-w-md">
+                  <div className="mb-4 font-display text-[36px] font-semibold uppercase tracking-[0.1em] text-marble">
+                    NIPHATES
+                  </div>
+                  <p className="font-mono text-[13px] text-parch">
+                    No providers configured. Open{" "}
+                    <Link
+                      href="/settings"
+                      className="text-gold underline underline-offset-2 hover:text-goldbri"
+                    >
+                      Settings
+                    </Link>{" "}
+                    to connect Hermes Agent or another API.
+                  </p>
                 </div>
-                <p className="font-mono text-[13px] text-parch">
-                  No providers configured. Open{" "}
-                  <a
-                    href="/settings"
-                    className="text-gold underline underline-offset-2 hover:text-goldbri"
-                  >
-                    Settings
-                  </a>{" "}
-                  to connect Hermes Agent or another API.
-                </p>
               </div>
-            </div>
+            ) : (
+              <MessageList
+                messages={active?.messages || []}
+                streaming={streaming && active?.id === streamingId}
+              />
+            )
+          ) : activeChamber === "command" ? (
+            <CommandView />
           ) : (
-            <MessageList
-              messages={active?.messages || []}
-              streaming={streaming && active?.id === streamingId}
-            />
+            <ChamberPlaceholder chamber={activeChamber} />
           )}
         </div>
 
-        {/* Composer */}
-        <Composer
-          disabled={noProviders || (streaming && active?.id !== streamingId)}
-          streaming={streaming && active?.id === streamingId}
-          onSend={handleSend}
-          onStop={handleStop}
-          models={currentProvider?.models ?? []}
-          model={model}
-          onModelChange={onModelChange}
-        />
+        {/* Composer — Dialogue chamber only */}
+        {activeChamber === "dialogue" && (
+          <Composer
+            disabled={noProviders || (streaming && active?.id !== streamingId)}
+            streaming={streaming && active?.id === streamingId}
+            onSend={handleSend}
+            onStop={handleStop}
+            models={currentProvider?.models ?? []}
+            model={model}
+            onModelChange={onModelChange}
+          />
+        )}
       </main>
     </div>
   );

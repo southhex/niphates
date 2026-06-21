@@ -1,7 +1,9 @@
+// components/Sidebar.tsx
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { PanelLeftClose } from "lucide-react";
+import { CHAMBERS, type ChamberId } from "@/components/chambers";
 import type { Conversation } from "@/lib/types";
 
 export function Sidebar({
@@ -9,114 +11,119 @@ export function Sidebar({
   activeId,
   streamingId,
   unread,
-  open,
+  activeChamber,
+  onSelectChamber,
+  sidebarOpen,
+  onCollapse,
   onSelect,
   onNew,
   onArchive,
   onUnarchive,
   onDelete,
-  onClose,
 }: {
   conversations: Conversation[];
   activeId: string | null;
   streamingId: string | null;
   unread: Set<string>;
-  open: boolean;
+  activeChamber: ChamberId;
+  onSelectChamber: (id: ChamberId) => void;
+  sidebarOpen: boolean;
+  onCollapse: () => void;
   onSelect: (id: string) => void;
   onNew: () => void;
   onArchive: (id: string) => void;
   onUnarchive: (id: string) => void;
   onDelete: (id: string) => void;
-  onClose: () => void;
 }) {
   const active = conversations.filter((c) => !c.archived);
   const archived = conversations.filter((c) => c.archived);
-  const [theme, setTheme] = useState<"obsidian" | "marble">("obsidian");
-
-  useEffect(() => {
-    const stored = localStorage.getItem("niphates-theme") as
-      | "obsidian"
-      | "marble"
-      | null;
-    if (stored) setTheme(stored);
-  }, []);
-
-  const toggleTheme = (t: "obsidian" | "marble") => {
-    setTheme(t);
-    localStorage.setItem("niphates-theme", t);
-    document.documentElement.setAttribute("data-theme", t);
-  };
+  const inDialogue = activeChamber === "dialogue";
+  const chamberDef = CHAMBERS.find((c) => c.id === activeChamber)!;
 
   return (
     <>
-      {open && (
+      {/* Mobile drawer backdrop */}
+      {sidebarOpen && (
         <div
           className="fixed inset-0 z-20 bg-black/50 md:hidden"
-          onClick={onClose}
+          onClick={onCollapse}
         />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-30 flex w-[264px] flex-col border-r border-hair bg-paneldk pl-[env(safe-area-inset-left)] transition-transform md:static md:translate-x-0 ${
-          open ? "translate-x-0" : "-translate-x-full"
+        className={`fixed inset-y-0 left-0 z-30 flex w-[264px] flex-col border-r border-hair bg-paneldk pl-[env(safe-area-inset-left)] transition-all md:static md:translate-x-0 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        } ${
+          sidebarOpen ? "md:w-[264px]" : "md:w-0 md:overflow-hidden md:border-r-0"
         }`}
       >
-        {/* Brand — top inset so it clears the notch when the drawer is open */}
-        <div className="flex items-center justify-between border-b border-hair px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+        {/* Brand row — no divider; top inset clears the notch */}
+        <div className="flex items-center justify-between px-4 pb-[13px] pt-[calc(13px+env(safe-area-inset-top))]">
           <span className="font-display text-[18px] font-semibold uppercase tracking-[0.14em] text-marble">
             NIPHATES
           </span>
-          <span
-            className="font-display text-[13px]"
-            style={{ color: "rgba(201,162,75,0.6)" }}
-          >
-            IV
-          </span>
-        </div>
-
-        {/* New dialogue */}
-        <div className="px-3 pt-3">
           <button
-            onClick={onNew}
-            className="btn-ghost-gold w-full px-3 py-2.5 font-mono text-[12px] uppercase tracking-[0.18em] md:py-2 md:text-[10.5px]"
+            onClick={onCollapse}
+            aria-label="Collapse sidebar"
+            className="flex h-7 w-7 items-center justify-center text-muted hover:text-marble"
           >
-            ❯ NEW DIALOGUE
+            <PanelLeftClose size={16} />
           </button>
         </div>
 
-        {/* Conversation list (active) */}
-        <nav className="mt-2 flex-1 overflow-y-auto overscroll-contain px-2 pb-2">
-          {active.length === 0 && archived.length === 0 && (
-            <p className="px-2 py-4 font-mono text-[11px] text-mutedlo">
-              No dialogues yet.
-            </p>
-          )}
-
-          {active.map((c) => (
-            <ChatRow
-              key={c.id}
-              c={c}
-              activeId={activeId}
-              streamingId={streamingId}
-              unread={unread}
-              onSelect={onSelect}
-              onArchive={onArchive}
-              onUnarchive={onUnarchive}
-              onDelete={onDelete}
-            />
-          ))}
+        {/* Chamber nav — type-only active indicator */}
+        <nav className="border-b border-hair px-[9px] pb-[9px] pt-1">
+          {CHAMBERS.map((c) => {
+            const isActive = c.id === activeChamber;
+            return (
+              <button
+                key={c.id}
+                onClick={() => onSelectChamber(c.id)}
+                className="flex w-full items-center justify-between px-[11px] py-2"
+              >
+                <span
+                  className={`font-mono text-[11.5px] uppercase tracking-[0.2em] ${
+                    isActive ? "text-marble" : "text-muted"
+                  }`}
+                >
+                  {c.name}
+                </span>
+                <span
+                  className={`font-display text-[14px] tracking-[0.05em] ${
+                    isActive ? "text-gold" : "text-mutedlo"
+                  }`}
+                  style={
+                    isActive
+                      ? { textShadow: "0 0 10px rgba(201,162,75,0.55)" }
+                      : undefined
+                  }
+                >
+                  {c.numeral}
+                </span>
+              </button>
+            );
+          })}
         </nav>
 
-        {/* Archived — pinned above the footer */}
-        {archived.length > 0 && (
-          <details className="group/arch border-t border-hair">
-            <summary className="cursor-pointer list-none px-3 py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted hover:text-parch">
-              <span className="inline-block transition group-open/arch:rotate-90">
-                ▸
-              </span>{" "}
-              ARCHIVED · {archived.length}
-            </summary>
-            <div className="max-h-48 overflow-y-auto px-2 pb-2">
-              {archived.map((c) => (
+        {inDialogue ? (
+          <>
+            {/* New dialogue */}
+            <div className="px-3 pt-3">
+              <button
+                onClick={onNew}
+                className="btn-ghost-gold w-full px-3 py-2.5 font-mono text-[12px] uppercase tracking-[0.18em] md:py-2 md:text-[10.5px]"
+              >
+                ❯ NEW DIALOGUE
+              </button>
+            </div>
+
+            {/* Conversation list (active) — flex-1 pushes Archived to the bottom */}
+            <nav className="mt-2 flex-1 overflow-y-auto overscroll-contain px-2 pb-2">
+              {active.length === 0 && archived.length === 0 && (
+                <p className="px-2 py-4 font-mono text-[11px] text-mutedlo">
+                  No dialogues yet.
+                </p>
+              )}
+              {active.map((c) => (
                 <ChatRow
                   key={c.id}
                   c={c}
@@ -129,49 +136,46 @@ export function Sidebar({
                   onDelete={onDelete}
                 />
               ))}
+            </nav>
+
+            {/* Archived — pinned above the bottom edge (8px 13px 20px) */}
+            {archived.length > 0 && (
+              <details className="group/arch border-t border-hair">
+                <summary className="cursor-pointer list-none px-[13px] pb-5 pt-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted hover:text-parch">
+                  <span className="inline-block transition group-open/arch:rotate-90">
+                    ▸
+                  </span>{" "}
+                  ARCHIVED · {archived.length}
+                </summary>
+                <div className="max-h-48 overflow-y-auto px-2 pb-2">
+                  {archived.map((c) => (
+                    <ChatRow
+                      key={c.id}
+                      c={c}
+                      activeId={activeId}
+                      streamingId={streamingId}
+                      unread={unread}
+                      onSelect={onSelect}
+                      onArchive={onArchive}
+                      onUnarchive={onUnarchive}
+                      onDelete={onDelete}
+                    />
+                  ))}
+                </div>
+              </details>
+            )}
+          </>
+        ) : (
+          /* Subsection placeholder for non-Dialogue chambers */
+          <div className="px-4 pt-4">
+            <div className="font-mono text-[9.5px] uppercase tracking-[0.24em] text-mutedlo">
+              {chamberDef.name} · SUBSECTIONS
             </div>
-          </details>
-        )}
-
-        {/* Footer — bottom inset so links clear the home indicator */}
-        <div className="space-y-0.5 border-t border-hair p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-          <Link
-            href="/hermes"
-            className="block px-3 py-2.5 font-mono text-[14px] uppercase tracking-[0.16em] text-parch hover:bg-panel hover:text-marble md:py-2 md:text-[11px]"
-          >
-            ⚡ CONTROL
-          </Link>
-          <Link
-            href="/settings"
-            className="block px-3 py-2.5 font-mono text-[14px] uppercase tracking-[0.16em] text-parch hover:bg-panel hover:text-marble md:py-2 md:text-[11px]"
-          >
-            ⚙ SETTINGS
-          </Link>
-
-          {/* Theme toggle */}
-          <div className="mt-2 flex border border-hair">
-            <button
-              onClick={() => toggleTheme("obsidian")}
-              className={`flex-1 px-2 py-2 font-mono text-[12px] uppercase tracking-[0.16em] transition-colors md:py-1.5 md:text-[10px] ${
-                theme === "obsidian"
-                  ? "bg-gold text-goldink"
-                  : "text-muted hover:text-marble"
-              }`}
-            >
-              ☾ OBSIDIAN
-            </button>
-            <button
-              onClick={() => toggleTheme("marble")}
-              className={`flex-1 border-l border-hair px-2 py-2 font-mono text-[12px] uppercase tracking-[0.16em] transition-colors md:py-1.5 md:text-[10px] ${
-                theme === "marble"
-                  ? "bg-gold text-goldink"
-                  : "text-muted hover:text-marble"
-              }`}
-            >
-              ☀ MARBLE
-            </button>
+            <p className="mt-2 font-read italic text-[13px] text-muted">
+              Not yet built.
+            </p>
           </div>
-        </div>
+        )}
       </aside>
     </>
   );
