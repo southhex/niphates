@@ -84,7 +84,7 @@ export function Sidebar({
         </div>
 
         {/* Conversation list (active) */}
-        <nav className="mt-2 flex-1 overflow-y-auto px-2 pb-2">
+        <nav className="mt-2 flex-1 overflow-y-auto overscroll-contain px-2 pb-2">
           {active.length === 0 && archived.length === 0 && (
             <p className="px-2 py-4 font-mono text-[11px] text-mutedlo">
               No dialogues yet.

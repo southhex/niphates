@@ -266,7 +266,7 @@ export default function Home() {
   const noProviders = providers.length === 0;
 
   return (
-    <div className="flex h-[100dvh] overflow-hidden">
+    <div className="fixed inset-0 flex overflow-hidden">
       <Sidebar
         conversations={conversations}
         activeId={activeId}
@@ -329,7 +329,7 @@ export default function Home() {
         </header>
 
         {/* Messages */}
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           {noProviders ? (
             <div className="flex h-full items-center justify-center px-6 text-center">
               <div className="max-w-md">

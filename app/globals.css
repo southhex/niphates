@@ -63,8 +63,8 @@ body {
   font-family: var(--font-mono), ui-monospace, monospace;
   -webkit-font-smoothing: antialiased;
   /* Safe-area insets live on the header/composer/sidebar bars, NOT here —
-     padding on the body would stack on top of the 100dvh shell and overflow
-     the viewport, forcing a scroll to reach the top bar or composer. */
+     padding on the body would stack on top of the fixed inset-0 chat shell and
+     overflow the viewport, forcing a scroll to reach the top bar or composer. */
   overscroll-behavior: none;
 }
 

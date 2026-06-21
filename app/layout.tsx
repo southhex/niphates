@@ -32,7 +32,12 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    // NOT "black-translucent": that makes the standalone web view full-bleed
+    // under the status bar, and iOS measures that viewport short on first paint
+    // — leaving a black gap at the bottom that only a scroll recalculates away.
+    // "black" reserves the status bar (content sits below it, near-black via the
+    // manifest theme_color), so the viewport is correct from the first frame.
+    statusBarStyle: "black",
     title: "Niphates",
   },
   icons: {
@@ -48,7 +53,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   viewportFit: "cover",
   // Shrink the layout viewport when the on-screen keyboard opens, so the
-  // h-[100dvh] shell contracts and the composer rides up on top of the
+  // fixed inset-0 chat shell contracts and the composer rides up on top of the
   // keyboard instead of being hidden behind it.
   interactiveWidget: "resizes-content",
 };
