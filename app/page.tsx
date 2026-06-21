@@ -315,16 +315,6 @@ export default function Home() {
               />
             </div>
 
-            {/* Model chip */}
-            <div className="flex items-center gap-1 border border-hair bg-panel px-3 py-2 md:px-2.5 md:py-1.5">
-              <Select
-                value={model}
-                onChange={onModelChange}
-                options={(currentProvider?.models ?? []).map((m) => ({ value: m, label: m }))}
-                disabled={!currentProvider || currentProvider.models.length === 0}
-                valueClassName="text-gold min-w-[8rem]"
-              />
-            </div>
           </div>
         </header>
 
@@ -362,6 +352,9 @@ export default function Home() {
           streaming={streaming && active?.id === streamingId}
           onSend={handleSend}
           onStop={handleStop}
+          models={currentProvider?.models ?? []}
+          model={model}
+          onModelChange={onModelChange}
         />
       </main>
     </div>
