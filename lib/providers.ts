@@ -143,6 +143,8 @@ export function toPublic(p: Provider): PublicProvider {
     type: p.type,
     baseUrl: p.baseUrl,
     models: p.models,
+    catalog: p.catalog,
+    catalogUpdatedAt: p.catalogUpdatedAt,
     defaultModel: p.defaultModel,
     enabled: p.enabled,
     hasKey: Boolean(p.apiKey),

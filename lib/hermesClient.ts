@@ -54,10 +54,30 @@ export interface ModelInfo {
   provider?: string;
   [k: string]: unknown;
 }
+
+export interface HermesPricing {
+  input?: string;
+  output?: string;
+  cache?: string | null;
+  free?: boolean;
+}
+
+export interface HermesUpstream {
+  slug: string;
+  name: string;
+  is_current: boolean;
+  models: string[];
+  total_models: number;
+  unavailable_models: string[];
+  free_tier?: boolean;
+  authenticated?: boolean;
+  pricing?: Record<string, HermesPricing>;
+}
+
 export interface ModelOptions {
-  models?: Array<string | { id?: string; name?: string; provider?: string }>;
-  providers?: string[];
-  [k: string]: unknown;
+  model?: string;
+  provider?: string;
+  providers?: HermesUpstream[];
 }
 
 export const hermesApi = {
@@ -86,7 +106,7 @@ export const hermesApi = {
 
 export interface PublicHermesConnection {
   adminBaseUrl: string;
-  authMode: "auto" | "none" | "bearer" | "cookie";
+  authMode: "auto" | "none" | "bearer" | "cookie" | "session";
   hasToken: boolean;
   isLoopback: boolean;
 }
@@ -115,6 +135,8 @@ export async function saveConnection(body: {
 
 export interface ConnectionTest {
   ok: boolean;
+  reachable?: boolean;
+  authenticated?: boolean;
   loopback?: boolean;
   model?: string | null;
   provider?: string | null;

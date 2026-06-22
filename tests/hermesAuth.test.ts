@@ -60,4 +60,23 @@ describe("authHeaders", () => {
       authHeaders({ adminBaseUrl: "https://hermes.example.com", authMode: "none", token: "t" }),
     ).toEqual({});
   });
+
+  it("session: sends the X-Hermes-Session-Token header", () => {
+    expect(
+      authHeaders({
+        adminBaseUrl: "http://100.127.15.14:9119",
+        authMode: "session",
+        token: "tok",
+      }),
+    ).toEqual({ "X-Hermes-Session-Token": "tok" });
+  });
+
+  it("session: sends nothing without a token", () => {
+    expect(
+      authHeaders({
+        adminBaseUrl: "http://100.127.15.14:9119",
+        authMode: "session",
+      }),
+    ).toEqual({});
+  });
 });

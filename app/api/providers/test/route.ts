@@ -3,6 +3,7 @@
 
 import { NextRequest } from "next/server";
 import { getProvider } from "@/lib/providers";
+import { extractModelIds } from "@/lib/modelDiscovery";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,10 +53,7 @@ export async function POST(req: NextRequest) {
       });
     }
     const json = await res.json().catch(() => ({}));
-    const models: string[] = Array.isArray(json?.data)
-      ? json.data.map((m: { id: string }) => m.id).filter(Boolean)
-      : [];
-    return Response.json({ ok: true, models });
+    return Response.json({ ok: true, models: extractModelIds(json) });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return Response.json({ ok: false, error: message });

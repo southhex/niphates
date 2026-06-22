@@ -1,5 +1,5 @@
-// Probe the Hermes management API to confirm reachability + auth.
-// Uses /api/model/info as a lightweight, always-present read endpoint.
+// Two-probe Hermes connection test: /api/model/info (unauthenticated, reachability)
+// then /api/model/options (authenticated) to confirm the token separately.
 
 import {
   getHermesConnection,
@@ -16,33 +16,42 @@ export async function POST() {
   const loopback = isLoopbackUrl(conn.adminBaseUrl);
 
   try {
-    const res = await hermesFetch("/api/model/info", { timeoutMs: 8000 });
-    if (res.status === 401 || res.status === 403) {
+    // /model/info is unauthenticated — proves reachability, not auth.
+    const infoRes = await hermesFetch("/api/model/info", { timeoutMs: 8000 });
+    if (!infoRes.ok) {
+      const detail = await infoRes.text().catch(() => "");
       return Response.json({
         ok: false,
-        status: res.status,
-        error: loopback
-          ? "Hermes rejected the request (auth required even on this bind)."
-          : "Auth required — set an authMode + token for this non-loopback URL.",
+        reachable: false,
+        loopback,
+        status: infoRes.status,
+        error: `HTTP ${infoRes.status}: ${detail.slice(0, 200)}`,
       });
     }
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      return Response.json({
-        ok: false,
-        status: res.status,
-        error: `HTTP ${res.status}: ${detail.slice(0, 200)}`,
-      });
+    const info = await infoRes.json().catch(() => ({}));
+
+    // Reachability is proven. Probe an authenticated endpoint to confirm the
+    // token. A separate try/catch so an auth-probe network error doesn't get
+    // reported as unreachable. `authenticated` is true only on a 2xx — a 401/403
+    // means the token is wrong; any other non-2xx (5xx, etc.) is not a
+    // confirmed auth success, so we report false rather than guessing.
+    let authenticated = false;
+    try {
+      const optRes = await hermesFetch("/api/model/options", { timeoutMs: 8000 });
+      authenticated = optRes.ok;
+    } catch {
+      authenticated = false;
     }
-    const info = await res.json().catch(() => ({}));
+
     return Response.json({
       ok: true,
+      reachable: true,
+      authenticated,
       loopback,
       model: info?.model ?? info?.current ?? null,
       provider: info?.provider ?? null,
-      info,
     });
   } catch (err) {
-    return Response.json({ ok: false, error: hermesError(err) });
+    return Response.json({ ok: false, reachable: false, loopback, error: hermesError(err) });
   }
 }

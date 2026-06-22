@@ -2,6 +2,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ModelCuration } from "@/components/ModelCuration";
+import { HermesModelCatalog } from "@/components/HermesModelCatalog";
 import {
   getConnection,
   saveConnection,
@@ -10,13 +12,6 @@ import {
   type PublicHermesConnection,
   type ModelOptions,
 } from "@/lib/hermesClient";
-
-function modelIds(opts: ModelOptions | null): string[] {
-  if (!opts?.models) return [];
-  return opts.models
-    .map((m) => (typeof m === "string" ? m : m.id || m.name || ""))
-    .filter(Boolean) as string[];
-}
 
 export function CommandView() {
   const [conn, setConn] = useState<PublicHermesConnection | null>(null);
@@ -29,7 +24,7 @@ export function CommandView() {
   const [currentModel, setCurrentModel] = useState<string | null>(null);
   const [currentProvider, setCurrentProvider] = useState<string | null>(null);
   const [options, setOptions] = useState<ModelOptions | null>(null);
-  const [pickModel, setPickModel] = useState("");
+  const [busyModel, setBusyModel] = useState<string | null>(null);
   const [stats, setStats] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
@@ -50,7 +45,6 @@ export function CommandView() {
     if (info.ok && info.data) {
       setCurrentModel((info.data.model as string) ?? null);
       setCurrentProvider((info.data.provider as string) ?? null);
-      setPickModel((info.data.model as string) ?? "");
     }
     if (opts.ok) setOptions(opts.data);
     if (sys.ok) setStats(sys.data);
@@ -70,9 +64,9 @@ export function CommandView() {
     if (t.ok) {
       setConnected(true);
       setStatus(
-        `✅ Connected${t.loopback ? " (loopback, no auth)" : ""}. Current model: ${
-          t.model ?? "?"
-        }`,
+        t.authenticated === false
+          ? `⚠️ Reachable but NOT authenticated — set authMode "session" + a valid token. Current model: ${t.model ?? "?"}`
+          : `✅ Connected${t.authenticated ? " & authenticated" : ""}${t.loopback ? " (loopback, no auth)" : ""}. Current model: ${t.model ?? "?"}`,
       );
       await refreshLive();
     } else {
@@ -81,19 +75,19 @@ export function CommandView() {
     }
   };
 
-  const onSetModel = async () => {
-    if (!pickModel || pickModel === currentModel) return;
-    setStatus(`Switching to ${pickModel}…`);
-    const res = await hermesApi.setModel(pickModel);
+  const onSetModel = async (model: string, provider: string) => {
+    if (!model || model === currentModel) return;
+    setBusyModel(model);
+    setStatus(`Switching to ${model}…`);
+    const res = await hermesApi.setModel(model, provider);
+    setBusyModel(null);
     if (res.ok) {
-      setStatus(`✅ Active model is now ${pickModel}`);
+      setStatus(`✅ Active model is now ${model}`);
       await refreshLive();
     } else {
       setStatus(`❌ ${res.error}`);
     }
   };
-
-  const available = modelIds(options);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
@@ -148,8 +142,13 @@ export function CommandView() {
               <option value="none">none</option>
               <option value="bearer">bearer token</option>
               <option value="cookie">session cookie</option>
+              <option value="session">session (X-Hermes-Session-Token)</option>
             </select>
           </label>
+          <p className="col-span-1 -mt-1 font-mono text-[10.5px] text-mutedlo sm:col-span-2">
+            Hermes&apos;s management API (model catalog, model switching) requires
+            <span className="text-parch"> session</span> mode.
+          </p>
           <label className="block">
             <span className="mb-1 block font-mono text-[11px] uppercase tracking-[0.12em] text-muted">
               Token / cookie {conn?.hasToken ? "(set — blank keeps it)" : ""}
@@ -192,6 +191,9 @@ export function CommandView() {
         </div>
       </section>
 
+      {/* Picker curation — all providers, independent of Hermes connection */}
+      <ModelCuration />
+
       {/* Model section */}
       {connected && (
         <section className="mb-4 border border-hair bg-paneldk p-4">
@@ -205,46 +207,23 @@ export function CommandView() {
               <span className="text-muted"> · {currentProvider}</span>
             ) : null}
           </p>
-          <div className="flex flex-wrap items-end gap-2">
-            <label className="block">
-              <span className="mb-1 block font-mono text-[11px] uppercase tracking-[0.12em] text-muted">
-                Switch model
-              </span>
-              {available.length > 0 ? (
-                <select
-                  className="hxinp min-w-[16rem]"
-                  value={pickModel}
-                  onChange={(e) => setPickModel(e.target.value)}
-                >
-                  {available.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  className="hxinp min-w-[16rem]"
-                  value={pickModel}
-                  onChange={(e) => setPickModel(e.target.value)}
-                  placeholder="model id"
-                />
-              )}
-            </label>
-            <button
-              onClick={onSetModel}
-              disabled={!pickModel || pickModel === currentModel}
-              className="border border-hair px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-parch hover:border-malach hover:text-malach disabled:opacity-40"
-            >
-              SET ACTIVE
-            </button>
-            <button
-              onClick={refreshLive}
-              className="border border-hair px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-parch hover:border-lapis hover:text-lapis"
-            >
-              REFRESH
-            </button>
-          </div>
+          <p className="mb-3 font-mono text-[11px] text-mutedlo">
+            The composer picks which profile answers; here you set the model that
+            profile thinks with. This is a global Hermes setting — it changes the
+            model for every chat against this profile.
+          </p>
+          <HermesModelCatalog
+            options={options}
+            currentModel={currentModel}
+            busyModel={busyModel}
+            onSet={onSetModel}
+          />
+          <button
+            onClick={refreshLive}
+            className="mt-3 border border-hair px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-parch hover:border-lapis hover:text-lapis"
+          >
+            REFRESH
+          </button>
         </section>
       )}
 

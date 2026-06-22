@@ -3,17 +3,18 @@
 // logic (the easy thing to get subtly wrong) is unit-testable. `lib/hermes.ts`
 // re-exports these and owns the disk/fetch side.
 
-export type HermesAuthMode = "auto" | "none" | "bearer" | "cookie";
+export type HermesAuthMode = "auto" | "none" | "bearer" | "cookie" | "session";
 
 export interface HermesConnection {
   /** Dashboard / management base URL. Hermes' dashboard defaults to :9119. */
   adminBaseUrl: string;
   /**
    * How to authenticate to `/api/*`:
-   * - "auto"   : no auth on loopback; bearer token otherwise (if present)
-   * - "none"   : never send auth
-   * - "bearer" : Authorization: Bearer <token>
-   * - "cookie" : Cookie: <token>  (paste a dashboard session cookie)
+   * - "auto"    : no auth on loopback; bearer token otherwise (if present)
+   * - "none"    : never send auth
+   * - "bearer"  : Authorization: Bearer <token>
+   * - "cookie"  : Cookie: <token>  (paste a dashboard session cookie)
+   * - "session" : X-Hermes-Session-Token: <token>  (Hermes dashboard session token)
    */
   authMode: HermesAuthMode;
   /** Secret token / cookie value. Stored server-side, never returned raw. */
@@ -52,6 +53,7 @@ export function authHeaders(conn: HermesConnection): Record<string, string> {
   if (!conn.token) return {};
   if (mode === "bearer") return { Authorization: `Bearer ${conn.token}` };
   if (mode === "cookie") return { Cookie: conn.token };
+  if (mode === "session") return { "X-Hermes-Session-Token": conn.token };
   return {};
 }
 
