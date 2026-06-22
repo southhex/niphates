@@ -19,6 +19,15 @@ export interface HermesConnection {
   authMode: HermesAuthMode;
   /** Secret token / cookie value. Stored server-side, never returned raw. */
   token?: string;
+  /**
+   * Inference (`/v1`) base URL for chat. Hermes's chat plane is a separate port
+   * (default :8642) from the management plane (:9119) above, so it's stored
+   * separately — but it belongs to the same Gateway connection. We POST to
+   * `${chatBaseUrl}/chat/completions`.
+   */
+  chatBaseUrl?: string;
+  /** Secret inference API key (Bearer). Stored server-side, never returned raw. */
+  chatKey?: string;
 }
 
 /** Public (redacted) view safe to send to the browser. */
@@ -27,6 +36,8 @@ export interface PublicHermesConnection {
   authMode: HermesAuthMode;
   hasToken: boolean;
   isLoopback: boolean;
+  chatBaseUrl?: string;
+  hasChatKey: boolean;
 }
 
 export function isLoopbackUrl(urlStr: string): boolean {
@@ -63,5 +74,7 @@ export function toPublicConnection(c: HermesConnection): PublicHermesConnection 
     authMode: c.authMode,
     hasToken: Boolean(c.token),
     isLoopback: isLoopbackUrl(c.adminBaseUrl),
+    chatBaseUrl: c.chatBaseUrl,
+    hasChatKey: Boolean(c.chatKey),
   };
 }

@@ -35,6 +35,8 @@ function seedFromEnv(): HermesConnection {
     adminBaseUrl: process.env.HERMES_ADMIN_URL || "http://127.0.0.1:9119",
     authMode: (process.env.HERMES_ADMIN_AUTH as HermesAuthMode) || "auto",
     token: process.env.HERMES_ADMIN_TOKEN || "",
+    chatBaseUrl: process.env.HERMES_BASE_URL || "http://127.0.0.1:8642/v1",
+    chatKey: process.env.HERMES_API_KEY || "",
   };
 }
 

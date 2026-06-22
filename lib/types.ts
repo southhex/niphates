@@ -16,6 +16,13 @@ export interface Provider {
   name: string;
   type: ProviderType;
   /**
+   * Where the connection lives. "direct" (default) is a standalone /v1 provider
+   * managed in Settings → Connections → Providers. "gateway" is the Hermes Agent
+   * entry synthesized from the Gateway connection — it isn't stored in
+   * providers.json and isn't editable in the Providers CRUD.
+   */
+  kind?: "direct" | "gateway";
+  /**
    * Base URL including the version path where appropriate.
    * For openai-type: ".../v1" (we POST to `${baseUrl}/chat/completions`).
    * For anthropic-type: "https://api.anthropic.com" (we POST to `${baseUrl}/v1/messages`).
@@ -77,6 +84,7 @@ export interface PublicProvider {
   id: string;
   name: string;
   type: ProviderType;
+  kind?: "direct" | "gateway";
   baseUrl: string;
   models: string[];
   catalog?: string[];

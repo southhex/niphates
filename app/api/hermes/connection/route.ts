@@ -44,6 +44,12 @@ export async function PUT(req: NextRequest) {
       incoming.token === "" || incoming.token === undefined
         ? current.token
         : incoming.token,
+    chatBaseUrl: (incoming.chatBaseUrl ?? current.chatBaseUrl)?.trim(),
+    // Blank/undefined chatKey means "keep the existing one".
+    chatKey:
+      incoming.chatKey === "" || incoming.chatKey === undefined
+        ? current.chatKey
+        : incoming.chatKey,
   };
 
   if (!next.adminBaseUrl) {

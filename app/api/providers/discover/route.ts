@@ -3,7 +3,7 @@
 // returns its profiles here. Anthropic-type has no list endpoint.
 
 import { NextRequest } from "next/server";
-import { getProvider, upsertProvider } from "@/lib/providers";
+import { getProvider, upsertProvider, HERMES_ID } from "@/lib/providers";
 import { extractModelIds } from "@/lib/modelDiscovery";
 
 export const runtime = "nodejs";
@@ -15,6 +15,12 @@ export async function POST(req: NextRequest) {
   };
   if (!providerId) {
     return Response.json({ error: "providerId required" }, { status: 400 });
+  }
+  if (providerId === HERMES_ID) {
+    return Response.json(
+      { catalog: null, note: "Hermes models are profiles, managed via the Gateway." },
+      { status: 400 },
+    );
   }
   const provider = await getProvider(providerId);
   if (!provider) {

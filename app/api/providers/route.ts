@@ -8,7 +8,9 @@ import {
   getProviders,
   upsertProvider,
   deleteProvider,
+  listPublicProviders,
   toPublic,
+  HERMES_ID,
 } from "@/lib/providers";
 import type { Provider } from "@/lib/types";
 import { providerSchema, formatZodError } from "@/lib/schemas";
@@ -17,8 +19,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const providers = await getProviders();
-  return Response.json({ providers: providers.map(toPublic) });
+  return Response.json({ providers: await listPublicProviders() });
 }
 
 export async function POST(req: NextRequest) {
@@ -38,6 +39,15 @@ export async function POST(req: NextRequest) {
   }
   const p: Provider = parsed.data;
 
+  // The Hermes (Gateway) provider is synthesized from the Gateway connection,
+  // not stored here — configure it under Settings → Connections → Gateway.
+  if (p.id === HERMES_ID || p.kind === "gateway") {
+    return Response.json(
+      { error: `"${HERMES_ID}" is managed via the Gateway connection.` },
+      { status: 400 },
+    );
+  }
+
   // If the client sends an empty apiKey, preserve the existing one instead of
   // wiping a stored secret (the UI never receives the real key back).
   if (p.apiKey === "" || p.apiKey === undefined) {
@@ -51,6 +61,12 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const id = req.nextUrl.searchParams.get("id");
   if (!id) return Response.json({ error: "id is required" }, { status: 400 });
+  if (id === HERMES_ID) {
+    return Response.json(
+      { error: `"${HERMES_ID}" is managed via the Gateway connection.` },
+      { status: 400 },
+    );
+  }
   const all = await deleteProvider(id);
   return Response.json({ providers: all.map(toPublic) });
 }

@@ -24,6 +24,7 @@ export const providerSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   type: providerTypeSchema,
+  kind: z.enum(["direct", "gateway"]).optional(),
   baseUrl: z.string().url(),
   apiKey: z.string().optional(),
   models: z.array(z.string()).default([]),
@@ -48,6 +49,10 @@ export const hermesConnectionInputSchema = z.object({
   adminBaseUrl: z.string().url().optional(),
   authMode: hermesAuthModeSchema.optional(),
   token: z.string().optional(),
+  // The Gateway also owns the inference (/v1) endpoint for chat. Blank chatKey
+  // (like a blank token) means "keep the stored secret".
+  chatBaseUrl: z.string().url().optional(),
+  chatKey: z.string().optional(),
 });
 
 export const conversationSchema = z.object({

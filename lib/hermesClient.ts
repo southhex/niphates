@@ -110,7 +110,26 @@ export const hermesApi = {
   sessions: () => hx<{ sessions?: unknown[] } | unknown[]>("/sessions"),
   searchSessions: (q: string) =>
     hx(`/sessions/search?q=${encodeURIComponent(q)}`),
+
+  // Profiles (the composer picks which profile answers a Gateway chat)
+  profiles: () => hx<ProfilesResponse>("/profiles"),
+  activeProfile: () => hx<ActiveProfileResponse>("/profiles/active"),
 };
+
+export interface HermesProfile {
+  name: string;
+  is_default?: boolean;
+  model?: string;
+  provider?: string;
+  description?: string;
+}
+export interface ProfilesResponse {
+  profiles?: HermesProfile[];
+}
+export interface ActiveProfileResponse {
+  active?: string;
+  current?: string;
+}
 
 // --- Connection config (separate, non-proxied endpoints) -----------------
 
@@ -119,6 +138,8 @@ export interface PublicHermesConnection {
   authMode: "auto" | "none" | "bearer" | "cookie" | "session";
   hasToken: boolean;
   isLoopback: boolean;
+  chatBaseUrl?: string;
+  hasChatKey: boolean;
 }
 
 export async function getConnection(): Promise<PublicHermesConnection | null> {
@@ -132,6 +153,8 @@ export async function saveConnection(body: {
   adminBaseUrl: string;
   authMode: string;
   token?: string;
+  chatBaseUrl?: string;
+  chatKey?: string;
 }): Promise<{ ok: boolean; error?: string; connection?: PublicHermesConnection }> {
   const res = await fetch("/api/hermes/connection", {
     method: "PUT",

@@ -17,3 +17,26 @@ export const CHAMBERS: ChamberDef[] = [
   { id: "council", name: "COUNCIL", numeral: "IV" },
   { id: "command", name: "COMMAND", numeral: "V" },
 ];
+
+/** A chamber's main tabs, shown in the sidebar's subsection area. */
+export interface SubsectionDef {
+  id: string;
+  label: string;
+}
+
+/**
+ * Per-chamber subsections (the chamber's main tabs). Dialogue is special-cased
+ * in the sidebar (conversation list), so it has none here. Chambers absent from
+ * this map fall back to a "not yet built" placeholder.
+ */
+export const CHAMBER_SUBSECTIONS: Partial<Record<ChamberId, SubsectionDef[]>> = {
+  command: [
+    { id: "sessions", label: "Sessions" },
+    { id: "models", label: "Models" },
+    { id: "cron", label: "Cron" },
+    { id: "memory", label: "Memory" },
+    { id: "voice", label: "Voice" },
+    { id: "channels", label: "Channels" },
+    { id: "keys", label: "Keys" },
+  ],
+};

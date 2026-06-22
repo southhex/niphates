@@ -12,6 +12,7 @@ import { ChamberPlaceholder } from "@/components/ChamberPlaceholder";
 import { Select } from "@/components/Select";
 import { type ChamberId } from "@/components/chambers";
 import { streamChatRequest } from "@/lib/client";
+import { hermesApi } from "@/lib/hermesClient";
 import {
   loadConversations,
   saveConversations,
@@ -30,7 +31,14 @@ export default function Home() {
   const [streamingId, setStreamingId] = useState<string | null>(null);
   const [unread, setUnread] = useState<Set<string>>(() => new Set());
   const [activeChamber, setActiveChamber] = useState<ChamberId>("dialogue");
+  // The active subsection (main tab) of the current chamber, shown in the
+  // sidebar. Only Command has subsections today; defaults to its built tab.
+  const [subsection, setSubsection] = useState<string>("models");
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  // For the Hermes (Gateway) provider the composer picks a *profile*, not a raw
+  // model — these come from the management plane, not the /v1 catalog.
+  const [gatewayProfiles, setGatewayProfiles] = useState<string[]>([]);
+  const [activeProfile, setActiveProfile] = useState<string>("");
   const streaming = streamingId !== null;
   const activeIdRef = useRef<string | null>(activeId);
   const abortRef = useRef<AbortController | null>(null);
@@ -142,6 +150,41 @@ export default function Home() {
   }, [activeId]);
 
   const currentProvider = providers.find((p) => p.id === providerId);
+  const isGateway = currentProvider?.kind === "gateway";
+  // The composer's model list: Hermes profiles for the Gateway, the curated
+  // model set for direct providers.
+  const composerModels = isGateway
+    ? gatewayProfiles
+    : currentProvider?.models ?? [];
+
+  // Load Hermes profiles for the Gateway composer selector. No-op (empty) when
+  // the Gateway isn't connected.
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([hermesApi.profiles(), hermesApi.activeProfile()]).then(
+      ([pr, ac]) => {
+        if (cancelled) return;
+        if (pr.ok && pr.data?.profiles) {
+          setGatewayProfiles(pr.data.profiles.map((p) => p.name));
+        }
+        if (ac.ok && ac.data) setActiveProfile(ac.data.active || ac.data.current || "");
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Default the Gateway selection to the active profile once profiles load (and
+  // nothing is selected yet — e.g. on fresh load with no active conversation).
+  useEffect(() => {
+    if (!isGateway || model || gatewayProfiles.length === 0) return;
+    const next =
+      activeProfile && gatewayProfiles.includes(activeProfile)
+        ? activeProfile
+        : gatewayProfiles[0];
+    setModel(next);
+  }, [isGateway, model, gatewayProfiles, activeProfile]);
 
   useEffect(() => {
     if (active) {
@@ -212,7 +255,12 @@ export default function Home() {
   const onProviderChange = (id: string) => {
     setProviderId(id);
     const p = providers.find((x) => x.id === id);
-    const m = p?.defaultModel || p?.models[0] || "";
+    const m =
+      p?.kind === "gateway"
+        ? (activeProfile && gatewayProfiles.includes(activeProfile)
+            ? activeProfile
+            : gatewayProfiles[0]) || ""
+        : p?.defaultModel || p?.models[0] || "";
     setModel(m);
     applyModelToActive(id, m);
   };
@@ -325,6 +373,11 @@ export default function Home() {
           setActiveChamber(ch);
           closeOnMobile();
         }}
+        activeSubsection={subsection}
+        onSelectSubsection={(id) => {
+          setSubsection(id);
+          closeOnMobile();
+        }}
         sidebarOpen={sidebarOpen}
         onCollapse={() => setSidebarOpen(false)}
         onSelect={(id) => {
@@ -410,7 +463,7 @@ export default function Home() {
               />
             )
           ) : activeChamber === "command" ? (
-            <CommandView />
+            <CommandView section={subsection} />
           ) : (
             <ChamberPlaceholder chamber={activeChamber} />
           )}
@@ -423,7 +476,7 @@ export default function Home() {
             streaming={streaming && active?.id === streamingId}
             onSend={handleSend}
             onStop={handleStop}
-            models={currentProvider?.models ?? []}
+            models={composerModels}
             model={model}
             onModelChange={onModelChange}
           />

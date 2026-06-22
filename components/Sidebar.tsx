@@ -4,7 +4,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { PanelLeftClose } from "lucide-react";
-import { CHAMBERS, type ChamberId } from "@/components/chambers";
+import {
+  CHAMBERS,
+  CHAMBER_SUBSECTIONS,
+  type ChamberId,
+} from "@/components/chambers";
 import type { Conversation } from "@/lib/types";
 
 export function Sidebar({
@@ -14,6 +18,8 @@ export function Sidebar({
   unread,
   activeChamber,
   onSelectChamber,
+  activeSubsection,
+  onSelectSubsection,
   sidebarOpen,
   onCollapse,
   onSelect,
@@ -28,6 +34,8 @@ export function Sidebar({
   unread: Set<string>;
   activeChamber: ChamberId;
   onSelectChamber: (id: ChamberId) => void;
+  activeSubsection: string;
+  onSelectSubsection: (id: string) => void;
   sidebarOpen: boolean;
   onCollapse: () => void;
   onSelect: (id: string) => void;
@@ -40,6 +48,7 @@ export function Sidebar({
   const archived = conversations.filter((c) => c.archived);
   const inDialogue = activeChamber === "dialogue";
   const chamberDef = CHAMBERS.find((c) => c.id === activeChamber)!;
+  const subsections = CHAMBER_SUBSECTIONS[activeChamber] ?? [];
 
   return (
     <>
@@ -166,11 +175,31 @@ export function Sidebar({
               </details>
             )}
           </>
+        ) : subsections.length > 0 ? (
+          /* Chamber subsections — the active chamber's main tabs */
+          <nav className="flex-1 overflow-y-auto overscroll-contain px-2 pt-3">
+            {subsections.map((s) => {
+              const isActive = s.id === activeSubsection;
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => onSelectSubsection(s.id)}
+                  className={`flex w-full items-center border-l-2 px-3 py-2.5 text-left font-mono text-[12.5px] uppercase tracking-[0.16em] transition-colors md:py-2 ${
+                    isActive
+                      ? "border-gold bg-panel text-gold"
+                      : "border-transparent text-muted hover:text-marble"
+                  }`}
+                >
+                  {s.label}
+                </button>
+              );
+            })}
+          </nav>
         ) : (
-          /* Subsection placeholder for non-Dialogue chambers */
+          /* No subsections defined yet for this chamber */
           <div className="px-4 pt-4">
             <div className="font-mono text-[9.5px] uppercase tracking-[0.24em] text-mutedlo">
-              {chamberDef.name} · SUBSECTIONS
+              {chamberDef.name}
             </div>
             <p className="mt-2 font-read italic text-[13px] text-muted">
               Not yet built.

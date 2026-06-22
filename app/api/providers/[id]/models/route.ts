@@ -4,7 +4,7 @@
 
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { getProvider, upsertProvider, toPublic } from "@/lib/providers";
+import { getProvider, upsertProvider, toPublic, HERMES_ID } from "@/lib/providers";
 import { formatZodError } from "@/lib/schemas";
 
 export const runtime = "nodejs";
@@ -17,6 +17,12 @@ export async function PATCH(
   ctx: { params: Promise<{ id: string }> },
 ) {
   const { id } = await ctx.params;
+  if (id === HERMES_ID) {
+    return Response.json(
+      { error: "Hermes models are managed via the Gateway connection." },
+      { status: 400 },
+    );
+  }
   let raw: unknown;
   try {
     raw = await req.json();
