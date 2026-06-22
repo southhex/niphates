@@ -25,6 +25,10 @@ export interface Provider {
   apiKey?: string;
   /** Models the user wants to expose for this provider. */
   models: string[];
+  /** Full set of model ids last discovered from the provider (cached). */
+  catalog?: string[];
+  /** Epoch ms of the last successful discovery. */
+  catalogUpdatedAt?: number;
   /** Optional default model id from `models`. */
   defaultModel?: string;
   /** Extra headers to send (e.g. OpenRouter ranking headers). */
@@ -75,6 +79,8 @@ export interface PublicProvider {
   type: ProviderType;
   baseUrl: string;
   models: string[];
+  catalog?: string[];
+  catalogUpdatedAt?: number;
   defaultModel?: string;
   enabled?: boolean;
   hasKey: boolean;

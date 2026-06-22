@@ -27,6 +27,8 @@ export const providerSchema = z.object({
   baseUrl: z.string().url(),
   apiKey: z.string().optional(),
   models: z.array(z.string()).default([]),
+  catalog: z.array(z.string()).optional(),
+  catalogUpdatedAt: z.number().optional(),
   defaultModel: z.string().optional(),
   extraHeaders: z.record(z.string()).optional(),
   enabled: z.boolean().optional(),
