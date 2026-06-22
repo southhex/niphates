@@ -70,9 +70,9 @@ export function CommandView() {
     if (t.ok) {
       setConnected(true);
       setStatus(
-        t.authenticated
-          ? `✅ Connected & authenticated. Current model: ${t.model ?? "?"}`
-          : `⚠️ Reachable but NOT authenticated — set authMode "session" + a valid token. Current model: ${t.model ?? "?"}`,
+        t.authenticated === false
+          ? `⚠️ Reachable but NOT authenticated — set authMode "session" + a valid token. Current model: ${t.model ?? "?"}`
+          : `✅ Connected${t.authenticated ? " & authenticated" : ""}${t.loopback ? " (loopback, no auth)" : ""}. Current model: ${t.model ?? "?"}`,
       );
       await refreshLive();
     } else {
