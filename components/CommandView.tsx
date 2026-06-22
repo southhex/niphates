@@ -70,9 +70,9 @@ export function CommandView() {
     if (t.ok) {
       setConnected(true);
       setStatus(
-        `✅ Connected${t.loopback ? " (loopback, no auth)" : ""}. Current model: ${
-          t.model ?? "?"
-        }`,
+        t.authenticated
+          ? `✅ Connected & authenticated. Current model: ${t.model ?? "?"}`
+          : `⚠️ Reachable but NOT authenticated — set authMode "session" + a valid token. Current model: ${t.model ?? "?"}`,
       );
       await refreshLive();
     } else {
@@ -148,8 +148,13 @@ export function CommandView() {
               <option value="none">none</option>
               <option value="bearer">bearer token</option>
               <option value="cookie">session cookie</option>
+              <option value="session">session (X-Hermes-Session-Token)</option>
             </select>
           </label>
+          <p className="col-span-1 -mt-1 font-mono text-[10.5px] text-mutedlo sm:col-span-2">
+            Hermes&apos;s management API (model catalog, model switching) requires
+            <span className="text-parch"> session</span> mode.
+          </p>
           <label className="block">
             <span className="mb-1 block font-mono text-[11px] uppercase tracking-[0.12em] text-muted">
               Token / cookie {conn?.hasToken ? "(set — blank keeps it)" : ""}

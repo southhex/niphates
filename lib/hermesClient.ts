@@ -115,6 +115,8 @@ export async function saveConnection(body: {
 
 export interface ConnectionTest {
   ok: boolean;
+  reachable?: boolean;
+  authenticated?: boolean;
   loopback?: boolean;
   model?: string | null;
   provider?: string | null;
