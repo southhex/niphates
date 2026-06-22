@@ -27,15 +27,6 @@ export function CommandView() {
   const [busyModel, setBusyModel] = useState<string | null>(null);
   const [stats, setStats] = useState<Record<string, unknown> | null>(null);
 
-  useEffect(() => {
-    getConnection().then((c) => {
-      if (!c) return;
-      setConn(c);
-      setAdminBaseUrl(c.adminBaseUrl);
-      setAuthMode(c.authMode);
-    });
-  }, []);
-
   const refreshLive = async () => {
     const [info, opts, sys] = await Promise.all([
       hermesApi.modelInfo(),
@@ -50,15 +41,9 @@ export function CommandView() {
     if (sys.ok) setStats(sys.data);
   };
 
-  const onSaveAndTest = async () => {
-    setStatus("Saving…");
-    const saved = await saveConnection({ adminBaseUrl, authMode, token });
-    if (!saved.ok) {
-      setStatus(`❌ ${saved.error}`);
-      return;
-    }
-    setToken("");
-    if (saved.connection) setConn(saved.connection);
+  // Test the stored connection and, when it's good, mark connected + pull the
+  // live model data. Shared by the mount auto-connect and the SAVE & TEST button.
+  const connect = async () => {
     setStatus("Testing connection…");
     const t = await testConnection();
     if (t.ok) {
@@ -73,6 +58,32 @@ export function CommandView() {
       setConnected(false);
       setStatus(`❌ ${t.error || `HTTP ${t.status}`}`);
     }
+  };
+
+  // On mount: load the saved connection and auto-connect when it's usable
+  // (loopback needs no token; otherwise a token must be present) so the model
+  // catalog is ready without clicking SAVE & TEST on every page load.
+  useEffect(() => {
+    getConnection().then((c) => {
+      if (!c) return;
+      setConn(c);
+      setAdminBaseUrl(c.adminBaseUrl);
+      setAuthMode(c.authMode);
+      if (c.isLoopback || c.hasToken) void connect();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const onSaveAndTest = async () => {
+    setStatus("Saving…");
+    const saved = await saveConnection({ adminBaseUrl, authMode, token });
+    if (!saved.ok) {
+      setStatus(`❌ ${saved.error}`);
+      return;
+    }
+    setToken("");
+    if (saved.connection) setConn(saved.connection);
+    await connect();
   };
 
   const onSetModel = async (model: string, provider: string) => {
