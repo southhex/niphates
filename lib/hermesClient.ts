@@ -106,7 +106,7 @@ export const hermesApi = {
 
 export interface PublicHermesConnection {
   adminBaseUrl: string;
-  authMode: "auto" | "none" | "bearer" | "cookie";
+  authMode: "auto" | "none" | "bearer" | "cookie" | "session";
   hasToken: boolean;
   isLoopback: boolean;
 }
