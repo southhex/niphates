@@ -16,33 +16,32 @@ export async function POST() {
   const loopback = isLoopbackUrl(conn.adminBaseUrl);
 
   try {
-    const res = await hermesFetch("/api/model/info", { timeoutMs: 8000 });
-    if (res.status === 401 || res.status === 403) {
+    // /model/info is unauthenticated — proves reachability, not auth.
+    const infoRes = await hermesFetch("/api/model/info", { timeoutMs: 8000 });
+    if (!infoRes.ok) {
+      const detail = await infoRes.text().catch(() => "");
       return Response.json({
         ok: false,
-        status: res.status,
-        error: loopback
-          ? "Hermes rejected the request (auth required even on this bind)."
-          : "Auth required — set an authMode + token for this non-loopback URL.",
+        reachable: false,
+        status: infoRes.status,
+        error: `HTTP ${infoRes.status}: ${detail.slice(0, 200)}`,
       });
     }
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      return Response.json({
-        ok: false,
-        status: res.status,
-        error: `HTTP ${res.status}: ${detail.slice(0, 200)}`,
-      });
-    }
-    const info = await res.json().catch(() => ({}));
+    const info = await infoRes.json().catch(() => ({}));
+
+    // /model/options requires a valid session token — use it to confirm auth.
+    const optRes = await hermesFetch("/api/model/options", { timeoutMs: 8000 });
+    const authenticated = optRes.status !== 401 && optRes.status !== 403;
+
     return Response.json({
       ok: true,
+      reachable: true,
+      authenticated,
       loopback,
       model: info?.model ?? info?.current ?? null,
       provider: info?.provider ?? null,
-      info,
     });
   } catch (err) {
-    return Response.json({ ok: false, error: hermesError(err) });
+    return Response.json({ ok: false, reachable: false, error: hermesError(err) });
   }
 }
