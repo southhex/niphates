@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ModelCuration } from "@/components/ModelCuration";
 import {
   getConnection,
   saveConnection,
@@ -196,6 +197,9 @@ export function CommandView() {
           )}
         </div>
       </section>
+
+      {/* Picker curation — all providers, independent of Hermes connection */}
+      <ModelCuration />
 
       {/* Model section */}
       {connected && (
