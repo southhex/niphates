@@ -53,11 +53,15 @@ export function ModelCuration() {
     setProviders((prev) =>
       prev.map((x) => (x.id === p.id ? { ...x, models } : x)),
     );
-    await fetch(`/api/providers/${encodeURIComponent(p.id)}/models`, {
+    const res = await fetch(`/api/providers/${encodeURIComponent(p.id)}/models`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ models }),
-    });
+    }).catch(() => null);
+    if (!res || !res.ok) {
+      setNote(`❌ Failed to save model selection for ${p.name} — reverted.`);
+      await load();
+    }
   };
 
   return (
