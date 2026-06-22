@@ -84,10 +84,20 @@ export const hermesApi = {
   // Models
   modelInfo: () => hx<ModelInfo>("/model/info"),
   modelOptions: () => hx<ModelOptions>("/model/options"),
+  // Hermes' /api/model/set only accepts POST and validates a model-assignment
+  // body. The active/primary model lives under scope "main" (PUT → 405; a body
+  // without `scope` → 422). `confirm_expensive_model` mirrors the dashboard's
+  // confirm checkbox — the catalog shows per-model pricing, so the click is the
+  // confirmation.
   setModel: (model: string, provider?: string) =>
     hx<ModelInfo>("/model/set", {
-      method: "PUT",
-      body: JSON.stringify({ model, ...(provider ? { provider } : {}) }),
+      method: "POST",
+      body: JSON.stringify({
+        scope: "main",
+        model,
+        provider: provider ?? "",
+        confirm_expensive_model: true,
+      }),
     }),
 
   // System / health
