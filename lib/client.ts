@@ -9,6 +9,16 @@ export interface StreamHandlers {
   onReasoning?: (text: string) => void;
   /** A tool.started / tool.completed event for the current turn. */
   onTool?: (event: ToolEvent) => void;
+  /** Run id for the active Hermes gateway run (used to respond to approvals). */
+  onRunStarted?: (runId: string) => void;
+  /** A Hermes tool approval gate — agent is paused waiting for user consent. */
+  onApproval?: (req: {
+    approvalId: string;
+    tool?: string;
+    command: string;
+    description?: string;
+    patternKeys?: string[];
+  }) => void;
   onError?: (message: string) => void;
   onDone?: () => void;
 }
@@ -69,6 +79,15 @@ export async function streamChatRequest(
             durationMs: evt.durationMs,
             error: evt.error,
           });
+        else if (evt.type === "run_started") handlers.onRunStarted?.(evt.runId);
+        else if (evt.type === "approval")
+          handlers.onApproval?.({
+            approvalId: evt.approvalId,
+            tool: evt.tool,
+            command: evt.command,
+            description: evt.description,
+            patternKeys: evt.patternKeys,
+          });
         else if (evt.type === "error") handlers.onError?.(evt.error);
         else if (evt.type === "done") handlers.onDone?.();
       } catch {
@@ -77,4 +96,17 @@ export async function streamChatRequest(
     }
   }
   handlers.onDone?.();
+}
+
+/** Send an approval decision for a paused Hermes run. */
+export async function approvalResponse(
+  runId: string,
+  approvalId: string,
+  choice: "once" | "session" | "always" | "deny",
+): Promise<void> {
+  await fetch("/api/runs/approval", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ runId, approvalId, choice }),
+  }).catch(() => {});
 }

@@ -28,6 +28,7 @@ export function Sidebar({
   onArchive,
   onUnarchive,
   onDelete,
+  onRename,
 }: {
   conversations: Conversation[];
   activeId: string | null;
@@ -44,6 +45,7 @@ export function Sidebar({
   onArchive: (id: string) => void;
   onUnarchive: (id: string) => void;
   onDelete: (id: string) => void;
+  onRename: (id: string, title: string) => void;
 }) {
   const active = conversations.filter((c) => !c.archived);
   const archived = conversations.filter((c) => c.archived);
@@ -147,6 +149,7 @@ export function Sidebar({
                   onArchive={onArchive}
                   onUnarchive={onUnarchive}
                   onDelete={onDelete}
+                  onRename={onRename}
                 />
               ))}
             </nav>
@@ -172,6 +175,7 @@ export function Sidebar({
                       onArchive={onArchive}
                       onUnarchive={onUnarchive}
                       onDelete={onDelete}
+                      onRename={onRename}
                     />
                   ))}
                 </div>
@@ -223,6 +227,7 @@ function ChatRow({
   onArchive,
   onUnarchive,
   onDelete,
+  onRename,
 }: {
   c: Conversation;
   activeId: string | null;
@@ -232,8 +237,12 @@ function ChatRow({
   onArchive: (id: string) => void;
   onUnarchive: (id: string) => void;
   onDelete: (id: string) => void;
+  onRename: (id: string, title: string) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [draftTitle, setDraftTitle] = useState("");
+  const cancelledRef = useRef(false);
   const [anchor, setAnchor] = useState<{
     top: number;
     bottom: number;
@@ -301,6 +310,25 @@ function ChatRow({
     }
   };
 
+  const startRename = () => {
+    setMenuOpen(false);
+    setDraftTitle(c.title);
+    cancelledRef.current = false;
+    setRenaming(true);
+  };
+
+  const commitRename = () => {
+    if (cancelledRef.current) return;
+    const trimmed = draftTitle.trim();
+    setRenaming(false);
+    if (trimmed && trimmed !== c.title) onRename(c.id, trimmed);
+  };
+
+  const cancelRename = () => {
+    cancelledRef.current = true;
+    setRenaming(false);
+  };
+
   const menu =
     menuOpen && anchor ? (
       <div
@@ -316,6 +344,13 @@ function ChatRow({
         }}
         className="w-36 overflow-hidden border border-hairlit bg-panel py-1 text-sm shadow-lg"
       >
+        <button
+          role="menuitem"
+          onClick={startRename}
+          className="block w-full px-3 py-2.5 text-left font-mono text-[14px] uppercase tracking-[0.1em] md:py-1.5 md:text-[12px] text-parchdk hover:bg-panel2"
+        >
+          RENAME
+        </button>
         {c.archived ? (
           <button
             role="menuitem"
@@ -358,13 +393,27 @@ function ChatRow({
           : "border-transparent text-muted hover:text-parch"
       }`}
     >
-      <button
-        onClick={() => onSelect(c.id)}
-        className="flex-1 truncate py-2.5 text-left font-mono text-[15px] md:py-2 md:text-[12.5px]"
-        title={c.title}
-      >
-        {c.title}
-      </button>
+      {renaming ? (
+        <input
+          autoFocus
+          value={draftTitle}
+          onChange={(e) => setDraftTitle(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { e.preventDefault(); commitRename(); }
+            if (e.key === "Escape") { e.preventDefault(); cancelRename(); }
+          }}
+          onBlur={commitRename}
+          className="flex-1 bg-transparent py-2.5 font-mono text-[15px] text-marble outline-none md:py-2 md:text-[12.5px]"
+        />
+      ) : (
+        <button
+          onClick={() => onSelect(c.id)}
+          className="flex-1 truncate py-2.5 text-left font-mono text-[15px] md:py-2 md:text-[12.5px]"
+          title={c.title}
+        >
+          {c.title}
+        </button>
+      )}
       <span className="flex shrink-0 items-center gap-1">
         {showIndicator &&
           (summoning ? (

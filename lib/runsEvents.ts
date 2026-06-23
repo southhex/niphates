@@ -53,6 +53,27 @@ export function mapRunsEvent(payload: string): StreamEvent | null {
     case "run.completed":
       return { kind: "done" };
 
+    // The gateway Runs API names this event "approval.request" (older builds
+    // prefix it "hermes."). The tool name arrives as tool/function_name; the id
+    // as approval_id or id. Verified against nesquena/hermes-webui gateway_chat.
+    case "approval.request":
+    case "hermes.approval.request":
+      return {
+        kind: "approval",
+        approvalId: String(e.approval_id ?? e.id ?? ""),
+        tool:
+          typeof e.tool === "string"
+            ? e.tool
+            : typeof e.function_name === "string"
+              ? e.function_name
+              : undefined,
+        command: typeof e.command === "string" ? e.command : "",
+        description: typeof e.description === "string" ? e.description : undefined,
+        patternKeys: Array.isArray(e.pattern_keys)
+          ? (e.pattern_keys as unknown[]).map(String)
+          : undefined,
+      };
+
     default:
       // run.started, usage pings, and anything we don't model yet are ignored.
       return null;

@@ -6,12 +6,13 @@ import Link from "next/link";
 import { PanelLeft, Settings as SettingsIcon } from "lucide-react";
 import { Sidebar } from "@/components/Sidebar";
 import { MessageList } from "@/components/MessageList";
-import { Composer } from "@/components/Composer";
+import { Composer, type SlashCommandSpec } from "@/components/Composer";
 import { CommandView } from "@/components/CommandView";
 import { ChamberPlaceholder } from "@/components/ChamberPlaceholder";
 import { Select } from "@/components/Select";
 import { type ChamberId } from "@/components/chambers";
-import { streamChatRequest } from "@/lib/client";
+import { streamChatRequest, approvalResponse } from "@/lib/client";
+import { ApprovalCard, type PendingApproval } from "@/components/ApprovalCard";
 import {
   loadConversations,
   saveConversations,
@@ -34,9 +35,11 @@ export default function Home() {
   // sidebar. Only Command has subsections today; defaults to its built tab.
   const [subsection, setSubsection] = useState<string>("models");
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [pendingApproval, setPendingApproval] = useState<PendingApproval | null>(null);
   const streaming = streamingId !== null;
   const activeIdRef = useRef<string | null>(activeId);
   const abortRef = useRef<AbortController | null>(null);
+  const currentRunIdRef = useRef<string | null>(null);
 
   // Close the drawer on small screens after first mount. Runs once so the
   // SSR default (open) doesn't desync hydration; desktop stays expanded.
@@ -211,6 +214,14 @@ export default function Home() {
   const handleArchive = (id: string) => setArchived(id, true);
   const handleUnarchive = (id: string) => setArchived(id, false);
 
+  const handleRename = (id: string, title: string) => {
+    persist(
+      conversations.map((c) =>
+        c.id === id ? { ...c, title, updatedAt: Date.now() } : c,
+      ),
+    );
+  };
+
   const applyModelToActive = (nextProviderId: string, nextModel: string) => {
     if (!activeId) return;
     persist(
@@ -237,7 +248,9 @@ export default function Home() {
   };
 
   // --- Send a message ----------------------------------------------------
-  const handleSend = async (text: string) => {
+  // `replaceLast` (used by /retry) drops the previous user+assistant pair from
+  // the base before appending, so the same prompt regenerates in place.
+  const handleSend = async (text: string, opts?: { replaceLast?: boolean }) => {
     if (!providerId || !model) return;
 
     let convo = active;
@@ -249,13 +262,16 @@ export default function Home() {
     }
 
     const id = convo.id;
+    const baseMessages = opts?.replaceLast
+      ? convo.messages.slice(0, -2)
+      : convo.messages;
     const userMsg = { role: "user" as const, content: text };
     const withUser: Conversation = {
       ...convo,
       providerId,
       model,
-      title: convo.messages.length === 0 ? titleFrom(text) : convo.title,
-      messages: [...convo.messages, userMsg, { role: "assistant", content: "" }],
+      title: baseMessages.length === 0 ? titleFrom(text) : convo.title,
+      messages: [...baseMessages, userMsg, { role: "assistant", content: "" }],
       updatedAt: Date.now(),
     };
     list = list.map((c) => (c.id === id ? withUser : c));
@@ -281,9 +297,18 @@ export default function Home() {
       });
     };
 
+    currentRunIdRef.current = null;
     await streamChatRequest(
       { providerId, model, messages: messagesForApi, conversationId: id },
       {
+        onRunStarted: (runId) => {
+          currentRunIdRef.current = runId;
+        },
+        onApproval: ({ approvalId, tool, command, description }) => {
+          const runId = currentRunIdRef.current;
+          if (!runId) return;
+          setPendingApproval({ runId, approvalId, tool, command, description });
+        },
         onDelta: (delta) => {
           updateAssistant((last) => ({ ...last, content: last.content + delta }));
         },
@@ -310,6 +335,7 @@ export default function Home() {
           });
         },
         onError: (message) => {
+          setPendingApproval(null);
           setConversations((prev) => {
             const next = prev.map((c) => {
               if (c.id !== id) return c;
@@ -330,6 +356,7 @@ export default function Home() {
       ctrl.signal,
     );
 
+    setPendingApproval(null);
     setStreamingId(null);
     if (!ctrl.signal.aborted && activeIdRef.current !== id) {
       setUnread((prev) => {
@@ -346,6 +373,123 @@ export default function Home() {
     abortRef.current?.abort();
     abortRef.current = null;
     setStreamingId(null);
+  };
+
+  // --- Slash commands ----------------------------------------------------
+  // These run locally against Niphates' own (client-side) conversation state —
+  // they are NOT agent endpoints. The picker in the Composer renders this list;
+  // runCommand dispatches. Returning false falls through to send as a message.
+  const slashCommands: SlashCommandSpec[] = useMemo(
+    () => [
+      { name: "help", desc: "List available commands" },
+      { name: "new", desc: "Start a new conversation" },
+      { name: "clear", desc: "Clear this conversation" },
+      { name: "title", desc: "Rename this conversation", arg: "[title]" },
+      { name: "model", desc: "Switch model", arg: "name" },
+      { name: "retry", desc: "Regenerate the last response" },
+      { name: "undo", desc: "Remove the last exchange" },
+      { name: "stop", desc: "Stop the current response" },
+    ],
+    [],
+  );
+
+  // Append a transient assistant note to the active conversation (used by
+  // /help, /title, etc. for inline feedback). No-op when there's no chat.
+  const pushNote = (content: string) => {
+    if (!activeId) return;
+    persist(
+      conversations.map((c) =>
+        c.id === activeId
+          ? {
+              ...c,
+              messages: [...c.messages, { role: "assistant", content }],
+              updatedAt: Date.now(),
+            }
+          : c,
+      ),
+    );
+  };
+
+  const runCommand = (name: string, args: string): boolean => {
+    switch (name) {
+      case "help": {
+        const lines = slashCommands
+          .map((c) => `- \`/${c.name}${c.arg ? " " + c.arg : ""}\` — ${c.desc}`)
+          .join("\n");
+        pushNote(`**Available commands**\n\n${lines}`);
+        return true;
+      }
+      case "new":
+        handleNew();
+        return true;
+      case "clear":
+        if (active)
+          persist(
+            conversations.map((c) =>
+              c.id === active.id ? { ...c, messages: [] } : c,
+            ),
+          );
+        return true;
+      case "title": {
+        const title = args.trim();
+        if (!active) return true;
+        if (!title) {
+          pushNote(`Current title: **${active.title || "Untitled"}**`);
+          return true;
+        }
+        persist(
+          conversations.map((c) =>
+            c.id === active.id ? { ...c, title, updatedAt: Date.now() } : c,
+          ),
+        );
+        return true;
+      }
+      case "model": {
+        const q = args.trim().toLowerCase();
+        if (!q) {
+          pushNote("Usage: `/model <name>`");
+          return true;
+        }
+        const match =
+          composerModels.find((m) => m.toLowerCase() === q) ??
+          composerModels.find((m) => m.toLowerCase().includes(q));
+        if (match) {
+          onModelChange(match);
+          pushNote(`Switched to **${match}**`);
+        } else {
+          pushNote(
+            isGateway
+              ? "Use the model switcher in the composer to change the Gateway model."
+              : `No model matching "${args.trim()}".`,
+          );
+        }
+        return true;
+      }
+      case "retry": {
+        if (!active || streaming) return true;
+        const lastUser = [...active.messages]
+          .reverse()
+          .find((m) => m.role === "user");
+        if (lastUser) handleSend(lastUser.content, { replaceLast: true });
+        return true;
+      }
+      case "undo": {
+        if (!active || streaming) return true;
+        persist(
+          conversations.map((c) =>
+            c.id === active.id
+              ? { ...c, messages: c.messages.slice(0, -2), updatedAt: Date.now() }
+              : c,
+          ),
+        );
+        return true;
+      }
+      case "stop":
+        if (streaming) handleStop();
+        return true;
+      default:
+        return false;
+    }
   };
 
   const noProviders = providers.length === 0;
@@ -384,6 +528,7 @@ export default function Home() {
         onArchive={handleArchive}
         onUnarchive={handleUnarchive}
         onDelete={handleDelete}
+        onRename={handleRename}
       />
 
       <main className="flex min-w-0 flex-1 flex-col">
@@ -458,6 +603,21 @@ export default function Home() {
           )}
         </div>
 
+        {/* Approval gate — shown above the composer when a tool needs consent */}
+        {pendingApproval && activeChamber === "dialogue" && (
+          <ApprovalCard
+            approval={pendingApproval}
+            onRespond={(choice) => {
+              approvalResponse(
+                pendingApproval.runId,
+                pendingApproval.approvalId,
+                choice,
+              );
+              setPendingApproval(null);
+            }}
+          />
+        )}
+
         {/* Composer — Dialogue chamber only */}
         {activeChamber === "dialogue" && (
           <Composer
@@ -465,6 +625,8 @@ export default function Home() {
             streaming={streaming && active?.id === streamingId}
             onSend={handleSend}
             onStop={handleStop}
+            commands={slashCommands}
+            onCommand={runCommand}
             models={composerModels}
             model={model}
             onModelChange={onModelChange}

@@ -55,6 +55,36 @@ describe("mapRunsEvent", () => {
     ).toEqual({ kind: "done" });
   });
 
+  it("maps approval.request event with all fields", () => {
+    expect(
+      mapRunsEvent(
+        '{"event":"approval.request","approval_id":"abc123","tool":"shell","command":"rm -rf /tmp/foo","description":"Delete temp files","pattern_keys":["rm"]}',
+      ),
+    ).toEqual({
+      kind: "approval",
+      approvalId: "abc123",
+      tool: "shell",
+      command: "rm -rf /tmp/foo",
+      description: "Delete temp files",
+      patternKeys: ["rm"],
+    });
+  });
+
+  it("maps the hermes.-prefixed approval event and falls back to id/function_name", () => {
+    expect(
+      mapRunsEvent(
+        '{"event":"hermes.approval.request","id":"x","function_name":"execute_code"}',
+      ),
+    ).toEqual({
+      kind: "approval",
+      approvalId: "x",
+      tool: "execute_code",
+      command: "",
+      description: undefined,
+      patternKeys: undefined,
+    });
+  });
+
   it("ignores unknown events, [DONE], empty, and malformed payloads", () => {
     expect(mapRunsEvent('{"event":"run.started"}')).toBeNull();
     expect(mapRunsEvent("[DONE]")).toBeNull();

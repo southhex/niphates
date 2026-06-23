@@ -67,6 +67,17 @@ export async function POST(req: NextRequest) {
               durationMs: ev.durationMs,
               error: ev.error,
             });
+          else if (ev.kind === "run_started")
+            send({ type: "run_started", runId: ev.runId });
+          else if (ev.kind === "approval")
+            send({
+              type: "approval",
+              approvalId: ev.approvalId,
+              tool: ev.tool,
+              command: ev.command,
+              description: ev.description,
+              patternKeys: ev.patternKeys,
+            });
         }
         send({ type: "done" });
       } catch (err) {

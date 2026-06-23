@@ -94,7 +94,19 @@ export type StreamEvent =
       durationMs?: number;
       error?: boolean;
     }
-  | { kind: "done" };
+  | { kind: "done" }
+  /** Emitted immediately after the run is created so the browser can track the run id. */
+  | { kind: "run_started"; runId: string }
+  /** A Hermes approval gate: the agent is waiting for the user to approve a command. */
+  | {
+      kind: "approval";
+      approvalId: string;
+      /** The tool requesting approval (e.g. "execute_code", "write_file"). */
+      tool?: string;
+      command: string;
+      description?: string;
+      patternKeys?: string[];
+    };
 
 export interface ChatRequest {
   providerId: string;

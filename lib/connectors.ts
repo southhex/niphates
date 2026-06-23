@@ -106,6 +106,9 @@ async function* hermesRunsStream(
   const { run_id: runId } = (await startRes.json()) as { run_id?: string };
   if (!runId) throw new Error("Hermes run did not return a run_id");
 
+  // Let the browser track the active run id so it can respond to approval requests.
+  yield { kind: "run_started" as const, runId };
+
   const evRes = await fetch(`${base}/runs/${runId}/events`, {
     headers: auth,
     signal: opts.signal,
