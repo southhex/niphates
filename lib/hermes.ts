@@ -96,6 +96,8 @@ async function basicLogin(conn: HermesConnection): Promise<SessionCache | null> 
   if (!conn.username || !conn.password) return null;
 
   const base = conn.adminBaseUrl.replace(/\/$/, "");
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 10000);
   try {
     const res = await fetch(`${base}/auth/password-login`, {
       method: "POST",
@@ -106,21 +108,29 @@ async function basicLogin(conn: HermesConnection): Promise<SessionCache | null> 
         password: conn.password,
         next: "",
       }),
-      signal: AbortSignal.timeout(10000),
+      signal: ctrl.signal,
     });
     if (!res.ok) return null;
 
-    // Extract the access token cookie from the Set-Cookie header
+    // Extract the access token cookie from the Set-Cookie header.
+    // The value is quoted: hermes_session_at="<token>"; ...
     const setCookie = res.headers.get("set-cookie");
     const atMatch = setCookie?.match(/hermes_session_at=([^;]+)/);
     if (!atMatch) return null;
+    // Strip surrounding quotes if present
+    let tokenVal = atMatch[1];
+    if (tokenVal.startsWith('"') && tokenVal.endsWith('"')) {
+      tokenVal = tokenVal.slice(1, -1);
+    }
 
     return {
-      cookie: `hermes_session_at=${atMatch[1]}`,
+      cookie: `hermes_session_at=${tokenVal}`,
       connFingerprint: connFingerprint(conn),
     };
   } catch {
     return null;
+  } finally {
+    clearTimeout(t);
   }
 }
 
