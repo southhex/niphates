@@ -24,24 +24,28 @@ export function ComposerModelSwitch({ profile }: { profile: string }) {
     null,
   );
   const [busyModel, setBusyModel] = useState<string | null>(null);
-  const [allowed, setAllowed] = useState<string[] | null>(null);
+  const [allowed, setAllowed] = useState<Record<string, string[]> | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   // Curated allowlist from Command → Models. Empty/undefined = show all.
   useEffect(() => {
-    getConnection().then((c) => setAllowed(c?.allowedModels ?? []));
+    getConnection().then((c) => setAllowed(c?.allowedModels ?? null));
   }, []);
 
-  // The catalog, narrowed to the allowlist (when one is set).
+  // The catalog, narrowed to the per-provider allowlist (when one is set).
   const shownOptions = useMemo<ModelOptions | null>(() => {
     if (!options) return null;
-    if (!allowed || allowed.length === 0) return options;
-    const allow = new Set(allowed);
+    if (!allowed || Object.keys(allowed).length === 0) return options;
+    // When the map is non-empty, filtering is active: only show models from
+    // providers that have entries in the map. Providers not in the map get
+    // an empty list (hidden). A provider entry with [] also hides all its models.
     const providers = (options.providers ?? [])
-      .map((u) => ({
-        ...u,
-        models: u.models.filter((m) => allow.has(m)),
-      }))
+      .map((u) => {
+        const allowedForProvider = allowed[u.slug];
+        if (allowedForProvider === undefined) return { ...u, models: [] };
+        const models = u.models.filter((m) => allowedForProvider.includes(m));
+        return { ...u, models };
+      })
       .filter((u) => u.models.length > 0)
       .map((u) => ({ ...u, total_models: u.models.length }));
     return { ...options, providers };

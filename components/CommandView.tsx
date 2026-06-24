@@ -82,15 +82,16 @@ export function CommandView({ section }: { section: string }) {
     }
   };
 
-  const onSaveFilter = async (models: string[]) => {
+  const onSaveFilter = async (models: Record<string, string[]>) => {
     setSavingFilter(true);
     const res = await saveAllowedModels(models);
     setSavingFilter(false);
     if (res.ok) {
       setConn((c) => (c ? { ...c, allowedModels: models } : c));
+      const count = Object.values(models).reduce((n, arr) => n + arr.length, 0);
       setStatus(
-        models.length
-          ? `✅ Composer picker limited to ${models.length} model(s).`
+        count > 0
+          ? `✅ Composer picker limited to ${count} model(s) across ${Object.keys(models).length} provider(s).`
           : "✅ Composer picker shows all models.",
       );
     } else {

@@ -68,8 +68,8 @@ export const hermesConnectionInputSchema = z.object({
   // (like a blank token) means "keep the stored secret".
   chatBaseUrl: z.string().url().optional(),
   chatKey: z.string().optional(),
-  // Curated composer model ids. Replaces (not merges) the stored list.
-  allowedModels: z.array(z.string()).optional(),
+  // Per-provider composer model allowlist. Key = provider slug, value = model ids.
+  allowedModels: z.record(z.array(z.string())).optional(),
 });
 
 export const conversationSchema = z.object({

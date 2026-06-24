@@ -154,13 +154,13 @@ export interface PublicHermesConnection {
   isLoopback: boolean;
   chatBaseUrl?: string;
   hasChatKey: boolean;
-  /** Curated composer model ids. Empty/undefined = show all. */
-  allowedModels?: string[];
+  /** Per-provider composer model allowlist. Empty/undefined = show all. */
+  allowedModels?: Record<string, string[]>;
 }
 
-/** Persist the composer model allowlist (Command → Models filter). */
+/** Persist the per-provider composer model allowlist (Command → Models filter). */
 export async function saveAllowedModels(
-  allowedModels: string[],
+  allowedModels: Record<string, string[]>,
 ): Promise<{ ok: boolean; error?: string }> {
   const res = await fetch("/api/hermes/connection", {
     method: "PUT",
