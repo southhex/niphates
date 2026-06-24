@@ -123,8 +123,11 @@ Mutations must use `store.update(fn)` (serialized RMW), not read-then-write.
   served via `app/api/conversations`.
 - `data/connectors.json` — connector resources (vaults, tools, external services),
   `lib/resourceConnectors.ts`. Validates connector config against the filesystem at write time.
-- `data/sanctum.json` — journal settings (connectorId + folder + filename template),
-  `lib/sanctum.ts`.
+- `data/sanctum.json` — journal settings (connectorId + folder + filename template +
+  wordGoal), `lib/sanctum.ts`. Uses the store's `merge` so newly-added fields (e.g. wordGoal)
+  default for existing installs.
+- `data/sanctum-wordcounts.json` (git-ignored) — derived per-file word-count cache, rebuilt
+  on demand by `lib/sanctum.ts`.
 
 Provider CRUD is exposed at `app/api/providers/*`.
 Connector CRUD is at `app/api/connectors/*`.
@@ -164,7 +167,11 @@ view components (e.g `CommandView`, `LibraryView`) route by subsection string.
 | Council | — | placeholder | Not yet built |
 | Command | Connectors, Sessions, Models, Cron, Memory, Voice, Channels, Keys | `CommandView` | Hermes control |
 
-`components/chambers.ts` holds the metadata (chamber list + per-chamber subsections).
+`components/chambers.ts` holds the metadata (chamber list + per-chamber subsections) and
+`firstSubsection(chamber)`. Selecting a chamber resolves `subsection` to its first subsection
+(`onSelectChamber` in `page.tsx`), so Library lands on Sanctum / Command on Connectors rather
+than a stale or placeholder tab; chambers with no subsections (Dialogue, not-yet-built ones)
+leave `subsection` untouched. `subsection` is a single shared state across chambers.
 `components/ChamberPlaceholder.tsx` renders the generic "not yet built" state.
 
 **Connectors** (`Command → Connectors`):
@@ -173,12 +180,58 @@ view components (e.g `CommandView`, `LibraryView`) route by subsection string.
 - Currently supports `obsidian-vault` type; extensible to MCP servers, TTRPG tools, etc.
 
 **Sanctum** (`Library → Sanctum`):
-- `components/SanctumView.tsx` — journal UI: entry list sidebar + markdown editor + settings
-- `components/MarkdownEditor.tsx` — CodeMirror 6 editor with live preview rendering
-- `lib/sanctum.ts` — server-side entry CRUD + settings persistence
-- `date-fns` for filename templating (e.g. `yyyy-MM-dd`)
-- YAML frontmatter hidden from editor but preserved in saved files
-- Auto-save on every keystroke (800ms debounce)
+- `components/SanctumView.tsx` — journal UI: entry list sidebar + markdown editor + settings.
+  Responsive list/detail on mobile (`< md`: list full-width, selecting an entry swaps to a
+  full-width editor with a `‹` back button; `md+`: side-by-side).
+- `components/MarkdownEditor.tsx` — CodeMirror 6 live-preview editor.
+- `lib/sanctum.ts` — server-side entry CRUD + settings persistence + word-count cache.
+- `date-fns` for filename templating (e.g. `yyyy.MM.dd`) and date parsing.
+
+Live preview (`MarkdownEditor.tsx`) is driven off the **Lezer markdown syntax tree**
+(`syntaxTree` + `@codemirror/lang-markdown`), NOT regex. For each formatting node in the
+visible viewport it styles the content and HIDES the syntax markers with a zero-width
+`Decoration.replace` (so cursor mapping stays correct), revealing markers only when a
+selection actually overlaps that **span** (span-scoped, not line-scoped — headings, quotes,
+HR and list bullets reveal at line scope since the marker is the line's prefix). Decorations
+are viewport-scoped, rebuilt only on `docChanged || viewportChanged || selectionSet`, and
+fed through a `RangeSetBuilder` sorted by `(from, startSide)`. Unordered list markers render
+as a real `•` bullet widget; HR renders as a drawn rule. We deliberately do NOT load
+`oneDark` or `syntaxHighlighting` — they'd fight the parchment writing surface. `Mod-b`/`i`
+etc. "jump out" past a closing marker on a second press (Obsidian/word-processor muscle
+memory) and unwrap an already-wrapped selection.
+
+- YAML frontmatter is stripped from the editing surface but preserved across saves
+  (`frontmatterRef`, re-attached on every change).
+- The entry **title** is NOT stored in the file. It's derived Niphates-side from the filename
+  via `deriveTitle`/`parseEntryDate` (parses the filename against `filenameTemplate`; falls
+  back to the bare filename if it doesn't parse). Rendered as an inline H1 **block widget** at
+  doc position 0 inside the editor column (display-only, never editable/saved), and in the
+  sidebar/header. The sidebar is ordered by this parsed date (newest first; undated notes
+  sort after, by mtime).
+- New entries seed **empty**; `POST /api/sanctum/entries` is **idempotent** — it creates
+  today's note if absent, else returns the existing filename (200), so "+ NEW" opens today's
+  note rather than 409-ing.
+- `wordGoal` (in `data/sanctum.json`) drives: a thin floating progress bar at the editor
+  bottom, a subtle bottom-left word count, a per-calendar-day **heatmap** above the file list
+  (one cell per day from the first dated entry to today; empty for days with no entry; tinted
+  by `wordCount/goal`), and a gold tint + `✦` on entries that met the goal. `countEntryWords`
+  (server) mirrors the client `countWords` so list/heatmap and live counts agree. Both strip
+  frontmatter and markdown punctuation. **Gold tints use inline `color-mix`, NOT Tailwind
+  `bg-gold/<opacity>`** — `--gold` is a bare hex with no `<alpha-value>` channel in the
+  config, so opacity modifiers silently no-op (a known footgun here).
+- **Word-count cache** (`lib/sanctum.ts`, `data/sanctum-wordcounts.json`, git-ignored): since
+  `listEntries` now reads every file to count words and the heatmap spans every day, counts
+  are cached per file keyed by `(connector folder name)`, validated against `(mtimeMs, size)`.
+  A write changes mtime so stale entries self-invalidate — no explicit invalidation. Cache is
+  namespaced per journal and pruned only within the active namespace; the persist `update()`
+  is gated so the all-cache-hit path does no write.
+- Entry filenames are resolved via `resolveEntryPath` (basename + containment check) — it
+  defends against path traversal WITHOUT mangling legitimate names (the old `sanitizeFilename`
+  rewrote spaces/apostrophes to `_`, 404-ing non-date-named entries).
+- Auto-save on every keystroke (800ms debounce).
+- The editor caret is gold (`--gold`); on mobile a `visualViewport` resize listener pulls the
+  caret back into view when the keyboard opens. (iOS WebKit — including "Chrome" on iOS —
+  doesn't honour `interactiveWidget: resizes-content`, so this is best-effort there.)
 - Keyboard shortcuts: `Mod-b` bold, `Mod-i` italic, `Mod-k` link, `Mod-\`` code,
   `Mod-Shift-1/2/3` headings, `Mod-Shift-.` blockquote, `Mod-l` list, `Mod-o` ordered list,
   `Mod-Shift-s` strikethrough

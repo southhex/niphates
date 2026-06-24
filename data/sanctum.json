@@ -1,5 +1,6 @@
 {
   "connectorId": "main-vault",
   "folder": "Journal",
-  "filenameTemplate": "yyyy.MM.dd"
+  "filenameTemplate": "yyyy.MM.dd",
+  "wordGoal": 300
 }

@@ -44,3 +44,12 @@ export const CHAMBER_SUBSECTIONS: Partial<Record<ChamberId, SubsectionDef[]>> = 
     { id: "keys", label: "Keys" },
   ],
 };
+
+/**
+ * The id of a chamber's first subsection, or null if it has none (Dialogue, or
+ * not-yet-built chambers). Used to resolve a chamber to a concrete tab on
+ * selection, so e.g. Library lands on Sanctum instead of a placeholder.
+ */
+export function firstSubsection(chamber: ChamberId): string | null {
+  return CHAMBER_SUBSECTIONS[chamber]?.[0]?.id ?? null;
+}

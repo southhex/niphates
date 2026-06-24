@@ -35,10 +35,11 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const content =
-    typeof raw === "object" && raw !== null && "content" in raw
-      ? String((raw as Record<string, unknown>).content ?? "")
-      : "";
+  const hasContent =
+    typeof raw === "object" && raw !== null && "content" in raw;
+  const providedContent = hasContent
+    ? String((raw as Record<string, unknown>).content ?? "")
+    : null;
 
   // Generate filename from template + today's date.
   const today = new Date();
@@ -49,13 +50,14 @@ export async function POST(req: NextRequest) {
     filename = format(today, "yyyy-MM-dd");
   }
 
-  const ok = await createEntry(settings, filename, content);
-  if (!ok) {
-    return Response.json(
-      { error: "Entry already exists or could not be created" },
-      { status: 409 },
-    );
-  }
+  // New notes start empty — the human-readable title is derived from the
+  // filename on the Niphates side (see deriveTitle in SanctumView), never
+  // written into the markdown body.
+  const seedContent = providedContent ?? "";
 
-  return Response.json({ filename, ok: true }, { status: 201 });
+  // Idempotent "open today's note": create if absent, otherwise just return the
+  // existing filename so the client opens it. Never an error for the user.
+  await createEntry(settings, filename, seedContent);
+
+  return Response.json({ filename, ok: true }, { status: 200 });
 }

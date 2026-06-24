@@ -17,6 +17,8 @@ next-env.d.ts
 /data/hermes.json
 # server-side chat history
 /data/conversations.json
+# derived word-count cache (rebuilt on demand)
+/data/sanctum-wordcounts.json
 .env
 .env.local
 .env*.local

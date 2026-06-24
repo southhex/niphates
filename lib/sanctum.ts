@@ -21,6 +21,11 @@ export interface SanctumSettings {
    * New entries get this format applied to today's date.
    */
   filenameTemplate: string;
+  /**
+   * Per-entry word count goal driving the progress bar. 0 (or absent) means
+   * no goal — the progress bar is hidden.
+   */
+  wordGoal: number;
 }
 
 export interface JournalEntry {
@@ -30,6 +35,22 @@ export interface JournalEntry {
   createdAt: number;
   updatedAt: number;
   size: number;
+  /** Word count of the entry body (frontmatter excluded). */
+  wordCount: number;
+}
+
+/**
+ * Count words in an entry body, ignoring YAML frontmatter and markdown
+ * punctuation. Kept in sync with the client-side countWords in SanctumView so
+ * the list heatmap and the live editor count agree.
+ */
+export function countEntryWords(text: string): number {
+  if (!text) return 0;
+  const body = text.replace(/^---\n[\s\S]*?\n---\n?/, "");
+  const matches = body
+    .replace(/[#>*_`~\-[\]()]/g, " ")
+    .match(/\b[\p{L}\p{N}'’-]+\b/gu);
+  return matches ? matches.length : 0;
 }
 
 // --- Default settings ------------------------------------------------------
@@ -39,6 +60,7 @@ function defaultSettings(): SanctumSettings {
     connectorId: "",
     folder: "Journal",
     filenameTemplate: "yyyy-MM-dd",
+    wordGoal: 0,
   };
 }
 
@@ -47,10 +69,92 @@ function defaultSettings(): SanctumSettings {
 const settingsStore = createJsonStore<SanctumSettings>({
   filename: "sanctum.json",
   seed: defaultSettings,
+  // Fill in newly-added fields (e.g. wordGoal) under the stored values so
+  // existing installs don't read back `undefined`.
+  merge: (seed, parsed) => ({ ...seed, ...parsed }),
 });
 
 export async function getSanctumSettings(): Promise<SanctumSettings> {
   return settingsStore.read();
+}
+
+// --- Word-count cache ------------------------------------------------------
+//
+// Counting words means reading the whole file, and listEntries now spans every
+// day in the journal — so re-reading every file on each list call is wasteful.
+// We cache the count per file, keyed by the connector + relative path, and
+// validate the cache entry against the file's (mtimeMs, size). A write changes
+// mtime, so stale entries are detected automatically — no explicit
+// invalidation needed. The cache lives in data/sanctum-wordcounts.json.
+
+interface WordCountEntry {
+  mtimeMs: number;
+  size: number;
+  words: number;
+}
+
+type WordCountCache = Record<string, WordCountEntry>;
+
+const wordCountStore = createJsonStore<WordCountCache>({
+  filename: "sanctum-wordcounts.json",
+  seed: () => ({}),
+});
+
+/**
+ * Resolve word counts for a batch of files, reading from disk only on a cache
+ * miss (file absent from cache, or its mtime/size changed). Persists any newly
+ * computed counts in a single serialized update. The cache is also pruned of
+ * keys not present in the current batch, so deleted files don't accumulate.
+ */
+async function resolveWordCounts(
+  namespace: string,
+  inputs: Array<{ key: string; filePath: string; mtimeMs: number; size: number }>,
+): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+
+  // Read uncached files up front (outside the store lock, so concurrent list
+  // calls don't serialize on disk reads).
+  const cache = await wordCountStore.read();
+  const fresh: Record<string, WordCountEntry> = {};
+  for (const { key, filePath, mtimeMs, size } of inputs) {
+    const hit = cache[key];
+    if (hit && hit.mtimeMs === mtimeMs && hit.size === size) {
+      out.set(key, hit.words);
+      continue;
+    }
+    const content = await fs.readFile(filePath, "utf8").catch(() => "");
+    const words = countEntryWords(content);
+    out.set(key, words);
+    fresh[key] = { mtimeMs, size, words };
+  }
+
+  const wantedKeys = new Set(inputs.map((i) => i.key));
+  const nsCachedCount = Object.keys(cache).filter((k) =>
+    k.startsWith(`${namespace} `),
+  ).length;
+  // A write is needed only if we computed fresh counts, or files in this
+  // namespace disappeared (cached count for the namespace exceeds the batch).
+  // The store always rewrites on update(), so we gate the call to avoid an
+  // unnecessary atomic write on the common all-cache-hit path.
+  const needsWrite =
+    Object.keys(fresh).length > 0 || nsCachedCount > inputs.length;
+
+  if (needsWrite) {
+    // Serialized update so concurrent writers don't clobber each other. Only
+    // touch keys in THIS namespace: keep other journals' caches, drop entries
+    // for files that vanished from this journal, write fresh counts.
+    await wordCountStore.update((current) => {
+      const next: WordCountCache = {};
+      for (const [k, v] of Object.entries(current)) {
+        if (k.startsWith(`${namespace} `) && !wantedKeys.has(k)) continue;
+        next[k] = v;
+      }
+      for (const [k, v] of Object.entries(fresh)) next[k] = v;
+      return next;
+    });
+  }
+
+  return out;
 }
 
 export async function saveSanctumSettings(
@@ -98,9 +202,25 @@ export async function listFolders(connectorId: string): Promise<string[]> {
 
 // --- Entry operations ------------------------------------------------------
 
-function sanitizeFilename(name: string): string {
-  // Keep it simple: alphanumeric, dashes, underscores, dots. No path traversal.
-  return name.replace(/[^a-zA-Z0-9._-]/g, "_");
+/**
+ * Resolve an entry filename to an absolute path inside the journal folder,
+ * defending against path traversal WITHOUT mangling legitimate names.
+ *
+ * Real on-disk filenames can contain spaces, apostrophes, unicode, etc. The
+ * old approach rewrote those to `_`, so reading/writing an existing entry with
+ * such a name 404'd. Instead we take only the basename (which discards any
+ * `/`, `..`, or absolute prefix) and verify the result stays within the folder.
+ * Returns null if the name escapes the folder or is empty.
+ */
+function resolveEntryPath(folderAbs: string, filename: string): string | null {
+  const base = path.basename(filename.trim());
+  if (!base || base === "." || base === "..") return null;
+  const name = base.endsWith(".md") ? base : `${base}.md`;
+  const full = path.resolve(folderAbs, name);
+  // Must live directly inside the folder (basename already guarantees this,
+  // but verify the containment explicitly as defence in depth).
+  if (path.dirname(full) !== path.resolve(folderAbs)) return null;
+  return full;
 }
 
 /** List all .md files in the configured folder, newest first. */
@@ -115,19 +235,41 @@ export async function listEntries(
     const mdFiles = entries.filter(
       (e) => e.isFile() && e.name.endsWith(".md"),
     );
-    const results: JournalEntry[] = [];
-    for (const f of mdFiles) {
-      const filePath = path.join(folderPath, f.name);
-      const stat = await fs.stat(filePath);
-      results.push({
-        filename: f.name,
-        displayName: f.name.replace(/\.md$/, ""),
-        folder: settings.folder,
-        createdAt: stat.birthtimeMs,
-        updatedAt: stat.mtimeMs,
-        size: stat.size,
-      });
-    }
+
+    // Stat every file, then resolve word counts through the cache (one read
+    // per changed/new file, none for unchanged files).
+    const stats = await Promise.all(
+      mdFiles.map(async (f) => {
+        const filePath = path.join(folderPath, f.name);
+        const stat = await fs.stat(filePath);
+        return { name: f.name, filePath, stat };
+      }),
+    );
+
+    // Namespace cache keys per journal (connector + folder) so different
+    // journals don't collide and pruning stays scoped to the active one.
+    const namespace = `${settings.connectorId} ${settings.folder}`;
+    const keyOf = (name: string) => `${namespace} ${name}`;
+
+    const counts = await resolveWordCounts(
+      namespace,
+      stats.map((s) => ({
+        key: keyOf(s.name),
+        filePath: s.filePath,
+        mtimeMs: s.stat.mtimeMs,
+        size: s.stat.size,
+      })),
+    );
+
+    const results: JournalEntry[] = stats.map((s) => ({
+      filename: s.name,
+      displayName: s.name.replace(/\.md$/, ""),
+      folder: settings.folder,
+      createdAt: s.stat.birthtimeMs,
+      updatedAt: s.stat.mtimeMs,
+      size: s.stat.size,
+      wordCount: counts.get(keyOf(s.name)) ?? 0,
+    }));
     results.sort((a, b) => b.updatedAt - a.updatedAt);
     return results;
   } catch {
@@ -142,8 +284,8 @@ export async function readEntry(
 ): Promise<string | null> {
   const root = await resolveVaultRoot(settings.connectorId);
   if (!root) return null;
-  const safe = sanitizeFilename(filename);
-  const filePath = path.join(root, settings.folder, safe.endsWith(".md") ? safe : `${safe}.md`);
+  const filePath = resolveEntryPath(path.join(root, settings.folder), filename);
+  if (!filePath) return null;
   try {
     return await fs.readFile(filePath, "utf8");
   } catch {
@@ -159,8 +301,8 @@ export async function writeEntry(
 ): Promise<boolean> {
   const root = await resolveVaultRoot(settings.connectorId);
   if (!root) return false;
-  const safe = sanitizeFilename(filename);
-  const filePath = path.join(root, settings.folder, safe.endsWith(".md") ? safe : `${safe}.md`);
+  const filePath = resolveEntryPath(path.join(root, settings.folder), filename);
+  if (!filePath) return false;
   try {
     await fs.mkdir(path.dirname(filePath), { recursive: true });
     await fs.writeFile(filePath, content, "utf8");
@@ -178,9 +320,8 @@ export async function createEntry(
 ): Promise<boolean> {
   const root = await resolveVaultRoot(settings.connectorId);
   if (!root) return false;
-  const safe = sanitizeFilename(filename);
-  const name = safe.endsWith(".md") ? safe : `${safe}.md`;
-  const filePath = path.join(root, settings.folder, name);
+  const filePath = resolveEntryPath(path.join(root, settings.folder), filename);
+  if (!filePath) return false;
   try {
     await fs.mkdir(path.dirname(filePath), { recursive: true });
     // Write only if the file doesn't exist yet (don't overwrite).

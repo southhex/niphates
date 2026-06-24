@@ -43,6 +43,10 @@ export async function PUT(req: NextRequest) {
       typeof r.filenameTemplate === "string" && r.filenameTemplate.trim()
         ? r.filenameTemplate.trim()
         : current.filenameTemplate,
+    wordGoal:
+      typeof r.wordGoal === "number" && Number.isFinite(r.wordGoal)
+        ? Math.max(0, Math.round(r.wordGoal))
+        : current.wordGoal,
   };
 
   const saved = await saveSanctumSettings(next);

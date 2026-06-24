@@ -11,7 +11,7 @@ import { CommandView } from "@/components/CommandView";
 import { LibraryView } from "@/components/LibraryView";
 import { ChamberPlaceholder } from "@/components/ChamberPlaceholder";
 import { Select } from "@/components/Select";
-import { type ChamberId } from "@/components/chambers";
+import { type ChamberId, firstSubsection } from "@/components/chambers";
 import { streamChatRequest, approvalResponse } from "@/lib/client";
 import { ApprovalCard, type PendingApproval } from "@/components/ApprovalCard";
 import {
@@ -516,6 +516,10 @@ export default function Home() {
         activeChamber={activeChamber}
         onSelectChamber={(ch) => {
           setActiveChamber(ch);
+          // Resolve to the chamber's first subsection so it lands on a real
+          // tab (e.g. Library → Sanctum) instead of a stale/placeholder one.
+          const first = firstSubsection(ch);
+          if (first) setSubsection(first);
           closeOnMobile();
         }}
         activeSubsection={subsection}

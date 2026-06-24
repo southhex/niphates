@@ -236,7 +236,7 @@ export function Composer({
                 }
               }}
               // Keep 16px on mobile so iOS doesn't zoom on focus; 13.5px on desktop.
-              className="max-h-[200px] flex-1 resize-none bg-transparent font-mono text-[16px] text-marble outline-none placeholder:text-mutedlo disabled:opacity-50 md:text-[13.5px]"
+              className="max-h-[200px] flex-1 resize-none bg-transparent font-mono text-[16px] text-marble caret-gold outline-none placeholder:text-mutedlo disabled:opacity-50 md:text-[13.5px]"
             />
           </div>
 
