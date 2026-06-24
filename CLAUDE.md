@@ -11,16 +11,34 @@ and Anthropic. Single-user by design: no auth, config lives in flat JSON files o
 
 ## Commands
 
-```bash
-npm install
-npm run dev      # next dev — http://localhost:3000 (dev never registers the SW)
-npm run build    # production build → .next
-npm run start    # next start on :3000 (SW registers only over HTTPS/localhost — see below)
-npm run lint     # next lint (ESLint not yet configured — prompts to set up on first run)
-npm run test     # vitest run (one-shot)
-npm run test:watch
-npm run gen-icons # regenerate PWA icons from scripts/gen-icons.mjs (uses sharp)
 ```
+npm install
+npm run dev          # next dev — http://localhost:3000 (dev never registers the SW)
+npm run build        # production build → .next
+npm run start        # next start on :3000 (SW registers only over HTTPS/localhost — see below)
+npm run lint         # next lint (ESLint not yet configured — prompts to set up on first run)
+npm run test         # vitest run (one-shot)
+npm run test:watch
+npm run gen-icons     # regenerate PWA icons from scripts/gen-icons.mjs (uses sharp)
+```
+
+### Key dependencies added (Jun 2026)
+
+- `codemirror` + `@codemirror/view`, `@codemirror/state`, `@codemirror/lang-markdown`,
+  `@codemirror/commands`, `@codemirror/search`, `@codemirror/language`,
+  `@codemirror/theme-one-dark` — live preview markdown editor for Sanctum
+- `date-fns` — date formatting for Sanctum filename templates
+- `react-markdown` + `remark-gfm` — markdown rendering (was already present, used in editor preview)
+
+**Hermes session titles** are synced from Niphates via `PATCH /api/sessions/{conversationId}` through
+the `/api/hx/*` proxy. Niphates pushes:
+- On **first message** of a new conversation (auto-title from the first 40 chars of the user's message).
+- On **explicit rename** via the Sidebar menu or `/title` command.
+
+All title pushes are fire-and-forget — if Hermes is disconnected or the session row doesn't exist yet,
+the local title stays as the source of truth and no error surfaces to the user. Hermes' own auto-title
+does NOT fire for Niphates sessions because it counts all user messages in the full conversation history
+and bails when `> 2`, which happens immediately since Niphates sends the full history on every turn.
 
 **Build directories are split by phase** (`next.config.mjs`): `next dev` writes to
 `.next-dev`; `next build`/`next start` use `.next`. This is deliberate — they used to
@@ -103,8 +121,15 @@ Mutations must use `store.update(fn)` (serialized RMW), not read-then-write.
   `merge` option so the env seed fills in newly-added fields under the stored values.
 - `data/conversations.json` (git-ignored) — server-side chat history, `lib/conversationStore.ts`,
   served via `app/api/conversations`.
+- `data/connectors.json` — connector resources (vaults, tools, external services),
+  `lib/resourceConnectors.ts`. Validates connector config against the filesystem at write time.
+- `data/sanctum.json` — journal settings (connectorId + folder + filename template),
+  `lib/sanctum.ts`.
 
 Provider CRUD is exposed at `app/api/providers/*`.
+Connector CRUD is at `app/api/connectors/*`.
+Sanctum settings + entries are at `app/api/sanctum/*`, `app/api/sanctum/entries/*`,
+`app/api/sanctum/folders`.
 
 ### Validation
 
@@ -127,6 +152,37 @@ and shared by both sides.
 
 ### UI
 
+The app uses a **chamber navigation** pattern — five chambers in the sidebar, each with
+subsections that act as main tabs. Chamber routing lives in `app/page.tsx`; per-chamber
+view components (e.g `CommandView`, `LibraryView`) route by subsection string.
+
+| Chamber | Subsection(s) | View component | Purpose |
+|---------|---------------|----------------|---------|
+| Dialogue | (conversation list) | inline in `page.tsx` | Chat with providers |
+| Studio | — | placeholder | Not yet built |
+| Library | Sanctum | `LibraryView` → `SanctumView` | Journaling |
+| Council | — | placeholder | Not yet built |
+| Command | Connectors, Sessions, Models, Cron, Memory, Voice, Channels, Keys | `CommandView` | Hermes control |
+
+`components/chambers.ts` holds the metadata (chamber list + per-chamber subsections).
+`components/ChamberPlaceholder.tsx` renders the generic "not yet built" state.
+
+**Connectors** (`Command → Connectors`):
+- `components/ConnectorsView.tsx` — CRUD UI for connector resources
+- `lib/resourceConnectors.ts` — server-side store + validation (filesystem checks for vault paths)
+- Currently supports `obsidian-vault` type; extensible to MCP servers, TTRPG tools, etc.
+
+**Sanctum** (`Library → Sanctum`):
+- `components/SanctumView.tsx` — journal UI: entry list sidebar + markdown editor + settings
+- `components/MarkdownEditor.tsx` — CodeMirror 6 editor with live preview rendering
+- `lib/sanctum.ts` — server-side entry CRUD + settings persistence
+- `date-fns` for filename templating (e.g. `yyyy-MM-dd`)
+- YAML frontmatter hidden from editor but preserved in saved files
+- Auto-save on every keystroke (800ms debounce)
+- Keyboard shortcuts: `Mod-b` bold, `Mod-i` italic, `Mod-k` link, `Mod-\`` code,
+  `Mod-Shift-1/2/3` headings, `Mod-Shift-.` blockquote, `Mod-l` list, `Mod-o` ordered list,
+  `Mod-Shift-s` strikethrough
+
 `app/page.tsx` (chat), `app/settings/page.tsx` (provider management), `app/hermes/page.tsx`
 (Hermes Control: connection config, live model switcher, stats). Components in
 `components/`. `RegisterSW.tsx` registers `public/sw.js` — production builds only.
@@ -143,3 +199,11 @@ and shared by both sides.
   `flushConversations()` to force a write (done when a stream completes).
 - Path alias `@/*` maps to the repo root (see `tsconfig.json`). Tests import via relative
   paths (`../lib/...`) since vitest doesn't resolve the alias.
+- **IMPORTANT**: `lib/connectors.ts` (chat wire adapters — OpenAI/Anthropic streams) and
+  `lib/resourceConnectors.ts` (connector resource registry — vaults/tools) are **two
+  completely different files with similar names**. Do not confuse them. Chat connectors
+  handle streaming HTTP → text fragments. Resource connectors manage persisted
+  configuration entries for external tools/vaults.
+- Connector type extensibility: to add a new connector type (e.g. `mcp-server`), add a
+  type to `ConnectorType`, a config interface, and a validation branch in
+  `validateConnector()` in `lib/resourceConnectors.ts`.

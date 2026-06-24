@@ -8,6 +8,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { MessageList } from "@/components/MessageList";
 import { Composer, type SlashCommandSpec } from "@/components/Composer";
 import { CommandView } from "@/components/CommandView";
+import { LibraryView } from "@/components/LibraryView";
 import { ChamberPlaceholder } from "@/components/ChamberPlaceholder";
 import { Select } from "@/components/Select";
 import { type ChamberId } from "@/components/chambers";
@@ -21,6 +22,7 @@ import {
   titleFrom,
 } from "@/lib/storage";
 import type { ChatMessage, Conversation, PublicProvider } from "@/lib/types";
+import { hermesApi } from "@/lib/hermesClient";
 
 export default function Home() {
   const [providers, setProviders] = useState<PublicProvider[]>([]);
@@ -33,7 +35,7 @@ export default function Home() {
   const [activeChamber, setActiveChamber] = useState<ChamberId>("dialogue");
   // The active subsection (main tab) of the current chamber, shown in the
   // sidebar. Only Command has subsections today; defaults to its built tab.
-  const [subsection, setSubsection] = useState<string>("models");
+  const [subsection, setSubsection] = useState<string>("connectors");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [pendingApproval, setPendingApproval] = useState<PendingApproval | null>(null);
   const streaming = streamingId !== null;
@@ -220,6 +222,9 @@ export default function Home() {
         c.id === id ? { ...c, title, updatedAt: Date.now() } : c,
       ),
     );
+    // Push rename to Hermes (fire-and-forget; failures are silent — the local
+    // title is the source of truth and Hermes may not be connected).
+    hermesApi.renameSession(id, title).catch(() => {});
   };
 
   const applyModelToActive = (nextProviderId: string, nextModel: string) => {
@@ -265,12 +270,13 @@ export default function Home() {
     const baseMessages = opts?.replaceLast
       ? convo.messages.slice(0, -2)
       : convo.messages;
+    const isFirstMessage = baseMessages.length === 0;
     const userMsg = { role: "user" as const, content: text };
     const withUser: Conversation = {
       ...convo,
       providerId,
       model,
-      title: baseMessages.length === 0 ? titleFrom(text) : convo.title,
+      title: isFirstMessage ? titleFrom(text) : convo.title,
       messages: [...baseMessages, userMsg, { role: "assistant", content: "" }],
       updatedAt: Date.now(),
     };
@@ -358,6 +364,12 @@ export default function Home() {
 
     setPendingApproval(null);
     setStreamingId(null);
+    // Push auto-title to Hermes after the first message completes. Hermes
+    // auto-title doesn't fire for Niphates sessions (it sees the full history
+    // and thinks it's not a first exchange), so we push it ourselves.
+    if (isFirstMessage) {
+      hermesApi.renameSession(id, withUser.title).catch(() => {});
+    }
     if (!ctrl.signal.aborted && activeIdRef.current !== id) {
       setUnread((prev) => {
         const next = new Set(prev);
@@ -596,6 +608,8 @@ export default function Home() {
                 streaming={streaming && active?.id === streamingId}
               />
             )
+          ) : activeChamber === "library" ? (
+            <LibraryView section={subsection} />
           ) : activeChamber === "command" ? (
             <CommandView section={subsection} />
           ) : (

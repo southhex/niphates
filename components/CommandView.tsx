@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { HermesModelCatalog } from "@/components/HermesModelCatalog";
 import { HermesModelFilter } from "@/components/HermesModelFilter";
+import { ConnectorsView } from "@/components/ConnectorsView";
 import { SessionsView } from "@/components/SessionsView";
 import { CHAMBER_SUBSECTIONS } from "@/components/chambers";
 import {
@@ -115,7 +116,9 @@ export function CommandView({ section }: { section: string }) {
         </div>
       )}
 
-      {notConfigured ? (
+      {section === "connectors" ? (
+        <ConnectorsView />
+      ) : notConfigured ? (
         <div className="border border-hair bg-paneldk p-4 font-mono text-[12px] text-parch">
           The Gateway isn&apos;t connected. Set the management URL + token in{" "}
           <Link

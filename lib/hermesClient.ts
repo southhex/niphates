@@ -110,6 +110,11 @@ export const hermesApi = {
   sessions: () => hx<{ sessions?: unknown[] } | unknown[]>("/sessions"),
   searchSessions: (q: string) =>
     hx(`/sessions/search?q=${encodeURIComponent(q)}`),
+  renameSession: (sessionId: string, title: string) =>
+    hx<{ session?: unknown }>(`/sessions/${encodeURIComponent(sessionId)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ title }),
+    }),
 
   // Profiles (the composer picks which profile answers a Gateway chat)
   profiles: () => hx<ProfilesResponse>("/profiles"),

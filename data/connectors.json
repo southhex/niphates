@@ -1,0 +1,12 @@
+[
+  {
+    "id": "main-vault",
+    "label": "Personal Obsidian Vault",
+    "type": "obsidian-vault",
+    "config": {
+      "path": "/root/workspace/obsidian/Main Vault"
+    },
+    "createdAt": 1782301709273,
+    "updatedAt": 1782301709273
+  }
+]

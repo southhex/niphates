@@ -38,6 +38,7 @@ Add a **RENAME** menu item to the `⋯` portal menu in `ChatRow` (`components/Si
 In `app/page.tsx`, the handler:
 1. Maps over `conversations`, replacing the matching entry's `title` and updating `updatedAt`.
 2. Calls `saveConversations(updated)` — the same debounced PUT to `/api/conversations` already used for archive/delete.
+3. Calls `hermesApi.renameSession(id, title)` to push the rename to Hermes via `PATCH /api/sessions/{id}` through the `/api/hx/*` proxy. Fire-and-forget (`.catch(() => {})`) — local title is the source of truth.
 
 No new API routes. No schema changes — `Conversation.title` (string) already exists in `lib/types.ts`. The auto-title logic in `lib/storage.ts` (`titleFrom`) is untouched.
 

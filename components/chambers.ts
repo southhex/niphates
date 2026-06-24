@@ -30,7 +30,11 @@ export interface SubsectionDef {
  * this map fall back to a "not yet built" placeholder.
  */
 export const CHAMBER_SUBSECTIONS: Partial<Record<ChamberId, SubsectionDef[]>> = {
+  library: [
+    { id: "sanctum", label: "Sanctum" },
+  ],
   command: [
+    { id: "connectors", label: "Connectors" },
     { id: "sessions", label: "Sessions" },
     { id: "models", label: "Models" },
     { id: "cron", label: "Cron" },
