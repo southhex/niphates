@@ -41,7 +41,10 @@ export const metadata: Metadata = {
     title: "Niphates",
   },
   icons: {
-    icon: "/icons/icon-192.png",
+    icon: [
+      { url: "/icons/icon.svg", type: "image/svg+xml" },
+      { url: "/icons/icon-192.png", type: "image/png" },
+    ],
     apple: "/icons/icon-192.png",
   },
 };
