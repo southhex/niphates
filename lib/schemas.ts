@@ -13,11 +13,25 @@ export const toolEventSchema = z.object({
   error: z.boolean().optional(),
 });
 
+export const chatBlockSchema = z.union([
+  z.object({ type: z.literal("text"), text: z.string() }),
+  z.object({ type: z.literal("reasoning"), text: z.string() }),
+  z.object({
+    type: z.literal("tool"),
+    tool: z.string(),
+    status: z.enum(["started", "completed"]),
+    preview: z.string().optional(),
+    durationMs: z.number().optional(),
+    error: z.boolean().optional(),
+  }),
+]);
+
 export const chatMessageSchema = z.object({
   role: z.enum(["system", "user", "assistant"]),
   content: z.string(),
   reasoning: z.string().optional(),
   toolCalls: z.array(toolEventSchema).optional(),
+  blocks: z.array(chatBlockSchema).optional(),
 });
 
 export const chatRequestSchema = z.object({

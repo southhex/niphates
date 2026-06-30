@@ -3,9 +3,12 @@
 import { useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ChevronRight, Wrench, Check, X } from "lucide-react";
-import type { ChatMessage, ToolEvent } from "@/lib/types";
+import type { ChatMessage } from "@/lib/types";
+import { mergeAdjacentText } from "@/lib/blocks";
 import { Spinner } from "@/components/Spinner";
+import { CopyButton } from "@/components/CopyButton";
+import { ReasoningBlock } from "@/components/ReasoningBlock";
+import { ToolCard } from "@/components/ToolCard";
 
 export function MessageList({
   messages,
@@ -73,14 +76,6 @@ export function MessageList({
             <div className="mb-1 font-mono text-[10.5px] uppercase tracking-[0.28em] text-porphlbl">
               NIPHATES
             </div>
-            {m.reasoning ? <ReasoningBlock text={m.reasoning} /> : null}
-            {m.toolCalls && m.toolCalls.length > 0 ? (
-              <div className="mb-2 flex flex-col gap-1">
-                {m.toolCalls.map((t, ti) => (
-                  <ToolCard key={ti} event={t} />
-                ))}
-              </div>
-            ) : null}
             {waiting ? (
               <div className="flex items-center gap-2.5 text-gold">
                 <Spinner className="text-[15px]" />
@@ -89,10 +84,18 @@ export function MessageList({
                 </span>
               </div>
             ) : (
-              <div className="msg-content font-read text-[16px] leading-[1.62] text-agentbody">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {m.content}
-                </ReactMarkdown>
+              <BlockRenderer
+                m={m}
+                streaming={streaming}
+                isLast={isLast}
+              />
+            )}
+            {!streaming && m.content && (
+              <div className="mt-1 flex justify-end">
+                <CopyButton
+                  text={() => m.content}
+                  label="Copy message"
+                />
               </div>
             )}
           </div>
@@ -103,61 +106,140 @@ export function MessageList({
   );
 }
 
-/** Collapsible thinking/reasoning preview, folded by default. */
-function ReasoningBlock({ text }: { text: string }) {
+/**
+ * Render an assistant message as a chronological list of blocks when `blocks`
+ * is present, falling back to the legacy flat layout (reasoning → tools →
+ * text) for older messages persisted before this feature shipped. Adjacent
+ * text blocks are merged into a single ReactMarkdown render so the user sees
+ * one continuous answer instead of fragmented pieces.
+ */
+function BlockRenderer({
+  m,
+  streaming,
+  isLast,
+}: {
+  m: ChatMessage;
+  streaming: boolean;
+  isLast: boolean;
+}) {
+  // Fall back to the legacy layout for messages persisted before `blocks` existed
+  if (!m.blocks || m.blocks.length === 0) {
+    return <LegacyAssistantContent m={m} streaming={streaming} isLast={isLast} />;
+  }
+
+  const merged = mergeAdjacentText(m.blocks);
+
   return (
-    <details className="group mb-2 border-l-2 border-hair pl-3">
-      <summary className="flex cursor-pointer list-none items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-[0.24em] text-mutedlo hover:text-parch">
-        <ChevronRight
-          size={12}
-          className="transition-transform group-open:rotate-90"
-        />
-        Reasoning
-      </summary>
-      <div className="mt-1.5 whitespace-pre-wrap font-read text-[14px] italic leading-[1.55] text-parch">
-        {text}
-      </div>
-    </details>
+    <>
+      {merged.map((block, i) => {
+        const isLastBlock = i === merged.length - 1;
+        const tailStreaming = streaming && isLast && isLastBlock;
+
+        if (block.type === "text") {
+          if (!block.text) return null;
+          return (
+            <div
+              key={i}
+              className="msg-content font-read text-[16px] leading-[1.62] text-agentbody"
+            >
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{ code: CodeComponent }}
+              >
+                {block.text}
+              </ReactMarkdown>
+            </div>
+          );
+        }
+        if (block.type === "reasoning") {
+          return (
+            <ReasoningBlock
+              key={i}
+              text={block.text}
+              streaming={tailStreaming}
+            />
+          );
+        }
+        // tool block
+        return (
+          <div key={i} className="mb-2">
+            <ToolCard event={block} streaming={tailStreaming} />
+          </div>
+        );
+      })}
+    </>
   );
 }
 
-/** One tool invocation: name, input preview, and running/done/error state. */
-function ToolCard({ event }: { event: ToolEvent }) {
-  const running = event.status === "started";
-  const icon = running ? (
-    <Spinner className="text-[12px]" />
-  ) : event.error ? (
-    <X size={13} className="text-carnelian" />
-  ) : (
-    <Check size={13} className="text-malach" />
-  );
+/** Old-style layout for conversations persisted before the `blocks` field existed. */
+function LegacyAssistantContent({
+  m,
+  streaming,
+  isLast,
+}: {
+  m: ChatMessage;
+  streaming: boolean;
+  isLast: boolean;
+}) {
+  const isLastTool = (idx: number) =>
+    streaming && isLast && idx === (m.toolCalls?.length ?? 0) - 1;
+
   return (
-    <div className="flex items-start gap-2 border border-hair bg-panel px-2.5 py-1.5">
-      <span className="mt-[2px] flex h-4 w-4 shrink-0 items-center justify-center text-gold">
-        {running ? icon : <Wrench size={12} />}
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 font-mono text-[12px] text-marble">
-          <span className="truncate">{event.tool || "tool"}</span>
-          {!running && (
-            <span className="flex items-center gap-1 text-mutedlo">
-              {icon}
-              {event.durationMs != null && (
-                <span className="text-[10.5px]">
-                  {event.durationMs < 1000
-                    ? `${event.durationMs}ms`
-                    : `${(event.durationMs / 1000).toFixed(2)}s`}
-                </span>
-              )}
-            </span>
-          )}
+    <>
+      {m.reasoning ? <ReasoningBlock text={m.reasoning} /> : null}
+      {m.toolCalls && m.toolCalls.length > 0 ? (
+        <div className="mb-2 flex flex-col gap-1">
+          {m.toolCalls.map((t, ti) => (
+            <ToolCard
+              key={ti}
+              event={t}
+              streaming={isLastTool(ti)}
+            />
+          ))}
         </div>
-        {event.preview ? (
-          <div className="mt-0.5 truncate font-mono text-[11px] text-mutedlo">
-            {event.preview}
-          </div>
-        ) : null}
+      ) : null}
+      <div className="msg-content font-read text-[16px] leading-[1.62] text-agentbody">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{ code: CodeComponent }}
+        >
+          {m.content}
+        </ReactMarkdown>
       </div>
+    </>
+  );
+}
+
+/**
+ * Custom `code` component for ReactMarkdown. Inline code (no language class)
+ * is rendered as-is. Fenced code blocks get a relative wrapper and a hover
+ * overlay containing a `CopyButton` so users can grab the snippet without
+ * selecting text. The `.msg-content pre` rules in `globals.css` still apply —
+ * the copy button sits absolutely positioned over the top-right corner.
+ */
+function CodeComponent({
+  className,
+  children,
+}: {
+  className?: string;
+  children?: React.ReactNode;
+}) {
+  const isBlock = className?.includes("language-");
+  // ReactMarkdown hands the raw children of a fenced block through, which
+  // includes the trailing newline that terminates the code line. Strip it so
+  // "Copy" gives the user a clean snippet instead of one with stray whitespace.
+  const text = String(children ?? "").replace(/\n$/, "");
+  if (!isBlock) {
+    return <code className={className}>{children}</code>;
+  }
+  return (
+    <div className="group/code relative">
+      <div className="absolute right-2 top-2 z-10 opacity-0 transition-opacity group-hover/code:opacity-100">
+        <CopyButton text={text} iconSize={11} />
+      </div>
+      <pre>
+        <code className={className}>{children}</code>
+      </pre>
     </div>
   );
 }

@@ -68,6 +68,19 @@ export interface ToolEvent {
   error?: boolean;
 }
 
+/** A chronological segment of an assistant message's turn. */
+export type ChatBlock =
+  | { type: "text"; text: string }
+  | { type: "reasoning"; text: string }
+  | {
+      type: "tool";
+      tool: string;
+      status: "started" | "completed";
+      preview?: string;
+      durationMs?: number;
+      error?: boolean;
+    };
+
 export interface ChatMessage {
   role: ChatRole;
   content: string;
@@ -75,6 +88,11 @@ export interface ChatMessage {
   reasoning?: string;
   /** Assistant-only: tool activity for this turn (Hermes agent runs). */
   toolCalls?: ToolEvent[];
+  /**
+   * Chronological segments — source of truth for rendering when present.
+   * Flat fields above are derived from these for backward-compat/search.
+   */
+  blocks?: ChatBlock[];
 }
 
 /**

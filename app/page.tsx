@@ -23,6 +23,11 @@ import {
 } from "@/lib/storage";
 import type { ChatMessage, Conversation, PublicProvider } from "@/lib/types";
 import { hermesApi } from "@/lib/hermesClient";
+import {
+  applyToolEvent,
+  appendReasoningDelta,
+  appendTextDelta,
+} from "@/lib/blocks";
 
 export default function Home() {
   const [providers, setProviders] = useState<PublicProvider[]>([]);
@@ -316,29 +321,13 @@ export default function Home() {
           setPendingApproval({ runId, approvalId, tool, command, description });
         },
         onDelta: (delta) => {
-          updateAssistant((last) => ({ ...last, content: last.content + delta }));
+          updateAssistant((last) => appendTextDelta(last, delta));
         },
         onReasoning: (text) => {
-          updateAssistant((last) => ({
-            ...last,
-            reasoning: (last.reasoning ?? "") + text,
-          }));
+          updateAssistant((last) => appendReasoningDelta(last, text));
         },
         onTool: (event) => {
-          updateAssistant((last) => {
-            const calls = [...(last.toolCalls ?? [])];
-            if (event.status === "completed") {
-              // Settle the most recent matching open call; else append.
-              for (let i = calls.length - 1; i >= 0; i--) {
-                if (calls[i].tool === event.tool && calls[i].status === "started") {
-                  calls[i] = { ...calls[i], ...event };
-                  return { ...last, toolCalls: calls };
-                }
-              }
-            }
-            calls.push(event);
-            return { ...last, toolCalls: calls };
-          });
+          updateAssistant((last) => applyToolEvent(last, event));
         },
         onError: (message) => {
           setPendingApproval(null);
@@ -347,10 +336,18 @@ export default function Home() {
               if (c.id !== id) return c;
               const msgs = [...c.messages];
               const last = msgs[msgs.length - 1];
+              // Mirror the error into `blocks` so it renders through the new
+              // block-based path. For old conversations without `blocks`, the
+              // flat `content` update is sufficient.
+              const errorText = `⚠️ ${message}`;
+              const blocks = last.blocks
+                ? [...last.blocks, { type: "text" as const, text: errorText }]
+                : undefined;
               msgs[msgs.length - 1] = {
                 ...last,
                 content:
-                  (last.content ? last.content + "\n\n" : "") + `⚠️ ${message}`,
+                  (last.content ? last.content + "\n\n" : "") + errorText,
+                ...(blocks ? { blocks } : {}),
               };
               return { ...c, messages: msgs };
             });
