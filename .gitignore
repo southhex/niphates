@@ -32,3 +32,6 @@ yarn-error.log*
 .vscode/
 .idea/
 *.tsbuildinfo
+.hermes
+.worktrees
+.claude

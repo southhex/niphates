@@ -16,6 +16,7 @@
 import { useEffect, useRef } from "react";
 import {
   EditorState,
+  Prec,
   RangeSetBuilder,
   StateField,
   StateEffect,
@@ -174,9 +175,23 @@ interface PendingDeco {
   from: number;
   to: number;
   deco: Decoration;
+  /**
+   * Whether this decoration should also be registered as an atomic range.
+   * Inline formatting markers (emphasis `**`, code `` ` ``, link brackets)
+   * are atomic so arrow keys / clicks jump cleanly over them. Block-level
+   * markers (`> `, `# `, bullets) are NOT atomic — the user expects to
+   * backspace through them one character at a time, and an atomic range
+   * would make a single Backspace eat the entire marker (which looks like
+   * "the whole line was deleted" when the marker carries the line's
+   * visual identity, e.g. the quote's gold border).
+   */
+  atomic: boolean;
 }
 
-function buildDecorations(view: EditorView): DecorationSet {
+function buildDecorations(view: EditorView): {
+  decorations: DecorationSet;
+  atomic: DecorationSet;
+} {
   const { state } = view;
   const tree = syntaxTree(state);
   const pending: PendingDeco[] = [];
@@ -191,19 +206,22 @@ function buildDecorations(view: EditorView): DecorationSet {
 
   // Hide a marker range. `spanFrom`/`spanTo` bound the formatting construct the
   // marker belongs to; if the cursor is inside that span, keep the marker shown.
+  // `atomic` controls whether the hidden range is also an atomic range (see
+  // PendingDeco.atomic).
   const hide = (
     from: number,
     to: number,
     spanFrom = from,
     spanTo = to,
+    atomic = true,
   ) => {
     if (to <= from) return;
     if (revealedIn(spanFrom, spanTo)) return;
-    pending.push({ from, to, deco: hiddenMarker });
+    pending.push({ from, to, deco: hiddenMarker, atomic });
   };
   const mark = (from: number, to: number, cls: string) => {
     if (to <= from) return;
-    pending.push({ from, to, deco: Decoration.mark({ class: cls }) });
+    pending.push({ from, to, deco: Decoration.mark({ class: cls }), atomic: false });
   };
 
   // Walk only the visible viewport ranges — not the whole document.
@@ -222,7 +240,9 @@ function buildDecorations(view: EditorView): DecorationSet {
           if (m) {
             const markerEnd = line.from + m[0].length;
             // Heading marker reveals when the cursor is anywhere on the line.
-            hide(line.from, markerEnd, line.from, line.to);
+            // NOT atomic — user expects to backspace through `#` one char
+            // at a time, not eat the whole marker in one keystroke.
+            hide(line.from, markerEnd, line.from, line.to, false);
             mark(markerEnd, line.to, headingClass);
           } else {
             mark(node.from, node.to, headingClass);
@@ -285,8 +305,19 @@ function buildDecorations(view: EditorView): DecorationSet {
           let to = node.to;
           if (state.doc.sliceString(to, to + 1) === " ") to += 1;
           // Quote marker reveals when the cursor is anywhere on the line.
-          hide(node.from, to, line.from, line.to);
-          mark(line.from, line.to, "cm-live-quote");
+          // NOT atomic — Backspace at the start of `> hello` should delete
+          // one character (the space), not the whole `> ` marker in one go.
+          hide(node.from, to, line.from, line.to, false);
+          // Use a LINE decoration (not a mark) so the class lands on the
+          // .cm-line block element. This makes the borderLeft span the
+          // full line height, and consecutive quote lines' borders touch
+          // to form one continuous gold bar — no seam at line breaks.
+          pending.push({
+            from: line.from,
+            to: line.from,
+            deco: Decoration.line({ class: "cm-live-quote" }),
+            atomic: false,
+          });
           return;
         }
 
@@ -298,6 +329,7 @@ function buildDecorations(view: EditorView): DecorationSet {
               from: node.from,
               to: node.to,
               deco: Decoration.replace({ widget: new HRWidget() }),
+              atomic: false,
             });
           } else {
             mark(node.from, node.to, "cm-live-hr-text");
@@ -317,6 +349,7 @@ function buildDecorations(view: EditorView): DecorationSet {
               from: node.from,
               to: node.to,
               deco: Decoration.replace({ widget: new BulletWidget() }),
+              atomic: false,
             });
           } else {
             mark(node.from, node.to, "cm-live-listmark");
@@ -335,15 +368,22 @@ function buildDecorations(view: EditorView): DecorationSet {
   );
 
   const builder = new RangeSetBuilder<Decoration>();
-  for (const p of pending) builder.add(p.from, p.to, p.deco);
-  return builder.finish();
+  const atomicBuilder = new RangeSetBuilder<Decoration>();
+  for (const p of pending) {
+    builder.add(p.from, p.to, p.deco);
+    if (p.atomic) atomicBuilder.add(p.from, p.to, p.deco);
+  }
+  return { decorations: builder.finish(), atomic: atomicBuilder.finish() };
 }
 
 const livePreviewPlugin = ViewPlugin.fromClass(
   class {
     decorations: DecorationSet;
+    atomic: DecorationSet;
     constructor(view: EditorView) {
-      this.decorations = buildDecorations(view);
+      const built = buildDecorations(view);
+      this.decorations = built.decorations;
+      this.atomic = built.atomic;
     }
     update(update: ViewUpdate) {
       // Rebuild only when the doc, viewport, or selection actually changed —
@@ -353,17 +393,21 @@ const livePreviewPlugin = ViewPlugin.fromClass(
         update.viewportChanged ||
         update.selectionSet
       ) {
-        this.decorations = buildDecorations(update.view);
+        const built = buildDecorations(update.view);
+        this.decorations = built.decorations;
+        this.atomic = built.atomic;
       }
     }
   },
   {
     decorations: (v) => v.decorations,
-    // Atomic ranges: arrow-key/click across a hidden marker jumps over it
-    // cleanly instead of stranding the caret in a zero-width gap.
+    // Atomic ranges: arrow-key/click across a hidden INLINE marker (emphasis,
+    // code, link brackets) jumps over it cleanly instead of stranding the
+    // caret in a zero-width gap. Block-level markers (`> `, `# `, bullets)
+    // are deliberately NOT atomic — see PendingDeco.atomic for why.
     provide: (plugin) =>
       EditorView.atomicRanges.of(
-        (view) => view.plugin(plugin)?.decorations ?? Decoration.none,
+        (view) => view.plugin(plugin)?.atomic ?? Decoration.none,
       ),
   },
 );
@@ -457,6 +501,122 @@ const toggleOrderedList: Command = (view) => {
   view.dispatch({ changes, scrollIntoView: true });
   return true;
 };
+
+// ── Blockquote line continuation / exit ───────────────────────────────────
+//
+// Obsidian-style blockquote editing:
+//   - Pressing Enter inside `> line` continues the quote on the next line.
+//   - Pressing Enter inside an empty `> ` line exits the quote.
+//   - Pressing Backspace on a non-empty quote line (e.g. `> hello`) just
+//     deletes one character — the default Backspace handler does this and
+//     we don't override it. A previous version of this override ate the
+//     whole `> ` marker as soon as the cursor entered the leading marker
+//     zone, which (with the `>` hidden by our live-preview replace) felt
+//     like the entire line had been deleted.
+//   - Pressing Backspace on an empty quote line (`> ` with no other
+//     content) exits the quote in one keystroke — there's nothing to
+//     "step back through" so a single delete makes sense.
+//
+// The decision logic is extracted into pure helpers so it can be unit
+// tested without spinning up a CodeMirror instance.
+
+// Match the parser's notion of a blockquote marker: `> ` (the `>` MUST be
+// followed by at least one space). The existing QuoteMark decoration at the
+// bottom of this file only fires when the parser emits a QuoteMark node, and
+// the markdown grammar requires the space — so a bare `>` at the start of a
+// line is just a literal `>`, not a quote. Matching the parser keeps our
+// override consistent with the live preview.
+const QUOTE_MARKER = /^> /;
+
+/** Length of the leading `> ` marker on this line, or 0 if not a quote. */
+export function quoteMarkerLength(lineText: string): number {
+  const match = lineText.match(QUOTE_MARKER);
+  return match ? match[0].length : 0;
+}
+
+/**
+ * Plan what Enter should do on a line, given the line text. Returns `null`
+ * to fall through to the default Enter handler (the line isn't a quote).
+ */
+export interface QuoteEnterPlan {
+  /** Text to insert at the cursor. */
+  insert: string;
+}
+
+export function planQuoteEnter(lineText: string): QuoteEnterPlan | null {
+  if (!QUOTE_MARKER.test(lineText)) return null;
+  // Empty quote line (`> `) → exit the quote: just a bare newline.
+  // This matches Obsidian: pressing Enter on an empty quote drops you out.
+  if (lineText.trim() === ">") {
+    return { insert: "\n" };
+  }
+  // Non-empty quote line → continue the quote on the new line.
+  const marker = lineText.match(QUOTE_MARKER)![0];
+  return { insert: `\n${marker}` };
+}
+
+/**
+ * Plan whether Backspace should do a one-keystroke quote-exit on this line.
+ * Returns `true` only when the line is a quote with no other content —
+ * i.e. the user is sitting on an empty quote and a single Backspace should
+ * remove the marker and exit. For non-empty quote lines, return `false`
+ * and let the default Backspace handler delete one character at a time
+ * (matching Obsidian's `> hello` → Backspace → `>ello` → `>llo` sequence).
+ *
+ * Note: a line that contains just `>` (no trailing space) is NOT a quote
+ * per the markdown grammar — we require `^> ` to match the parser — so
+ * `planQuoteBackspace(">")` returns `false` even though its trim is `">"`.
+ */
+export function planQuoteBackspace(lineText: string): boolean {
+  return QUOTE_MARKER.test(lineText) && lineText.trim() === ">";
+}
+
+const quoteEnterCommand: Command = (view) => {
+  const { state } = view;
+  const { head, empty } = state.selection.main;
+  // Only handle a collapsed selection; multi-cursor / range Enter is rare
+  // here and the default behavior is fine.
+  if (!empty) return false;
+  const line = state.doc.lineAt(head);
+  const plan = planQuoteEnter(line.text);
+  if (!plan) return false;
+  view.dispatch({
+    changes: { from: head, insert: plan.insert },
+    selection: { anchor: head + plan.insert.length },
+  });
+  return true;
+};
+
+const quoteBackspaceCommand: Command = (view) => {
+  const { state } = view;
+  const { head, empty } = state.selection.main;
+  if (!empty) return false;
+  // If the cursor is at the start of the document, there is no marker to
+  // delete and no previous line to merge with — fall through to default.
+  if (head === 0) return false;
+  const line = state.doc.lineAt(head);
+  if (!planQuoteBackspace(line.text)) return false;
+  const markerLen = quoteMarkerLength(line.text);
+  if (markerLen === 0) return false;
+  // Delete the whole `> ` marker in one stroke. The cursor lands at the
+  // line's start position, which is now visually "the start of a normal
+  // line" because the quote marker is gone.
+  view.dispatch({
+    changes: { from: line.from, to: line.from + markerLen },
+    selection: { anchor: line.from },
+  });
+  return true;
+};
+
+// High precedence: take over Enter/Backspace when we're on a quote line, and
+// fall through to the default keymap otherwise. Run BEFORE the formatting
+// keymap so quote behavior isn't shadowed by other mods.
+const quoteKeymap = Prec.high(
+  keymap.of([
+    { key: "Enter", run: quoteEnterCommand },
+    { key: "Backspace", run: quoteBackspaceCommand },
+  ]),
+);
 
 const wrapCode: Command = (view) => {
   const { state } = view;
@@ -606,6 +766,16 @@ const writingTheme = EditorView.theme(
       borderTop: "1px solid var(--hair)",
       verticalAlign: "middle",
     },
+
+    // Browser-native spellcheck squigglies. The default red clashes with the
+    // parchment/gold writing surface, so retint to goldink-on-gold — same hue
+    // family as our other live-preview markers, just a touch warmer so it
+    // still reads as a warning rather than decoration.
+    ".cm-content ::spelling-error": {
+      textDecoration: "underline wavy var(--goldbri)",
+      textDecorationThickness: "1px",
+      textUnderlineOffset: "3px",
+    },
   },
   { dark: true },
 );
@@ -642,6 +812,17 @@ export function MarkdownEditor({
       livePreviewPlugin,
       writingTheme,
       EditorView.lineWrapping,
+      // Browser-native spellcheck on the contenteditable. Without this, the
+      // `spellCheck` attribute on our wrapper <div> is a no-op — CodeMirror
+      // owns the editable surface and ignores the host's spellcheck flag.
+      // We set it both as a content attribute and an editor attribute for
+      // belt-and-braces: some browsers key off one, some the other.
+      EditorView.contentAttributes.of({ spellcheck: "true" }),
+      EditorView.editorAttributes.of({ spellcheck: "true" }),
+      // Quote line continuation / exit (Enter, Backspace). Prec.high so this
+      // runs before defaultKeymap; commands return false on non-quote lines
+      // to fall through to the default handlers.
+      quoteKeymap,
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
           const nextBody = update.state.doc.toString();
