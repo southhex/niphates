@@ -1,13 +1,17 @@
+"use client";
+
 // components/GatewayConnection.tsx
 // The Gateway is the single Hermes connection: the management plane (admin URL +
-// auth) that powers the Command chamber, plus the inference (/v1) endpoint used
-// for chat. Lives in Settings → Connections. Secrets never reach the browser —
-// the token/key are stored server-side and only their presence is reported back.
-"use client";
+// cookie auth) that powers the Command chamber, plus the inference (/v1)
+// endpoint used for chat. Lives in Settings → Connections. Secrets never reach
+// the browser — credentials are POSTed to /api/hermes/login, the resulting
+// session cookie is what gets persisted.
 
 import { useEffect, useState } from "react";
 import {
   getConnection,
+  login,
+  logout,
   saveConnection,
   testConnection,
   type PublicHermesConnection,
@@ -16,21 +20,18 @@ import {
 export function GatewayConnection() {
   const [conn, setConn] = useState<PublicHermesConnection | null>(null);
   const [adminBaseUrl, setAdminBaseUrl] = useState("");
-  const [authMode, setAuthMode] = useState("auto");
-  const [token, setToken] = useState("");
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
   const [chatBaseUrl, setChatBaseUrl] = useState("");
   const [chatKey, setChatKey] = useState("");
   const [status, setStatus] = useState("");
   const [connected, setConnected] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
+  const [loggingIn, setLoggingIn] = useState(false);
 
   useEffect(() => {
     getConnection().then((c) => {
       if (!c) return;
       setConn(c);
       setAdminBaseUrl(c.adminBaseUrl);
-      setAuthMode(c.authMode);
       setChatBaseUrl(c.chatBaseUrl ?? "");
     });
   }, []);
@@ -39,10 +40,7 @@ export function GatewayConnection() {
     setStatus("Saving…");
     const saved = await saveConnection({
       adminBaseUrl,
-      authMode,
-      token,
-      username,
-      password,
+      authMode: conn?.hasToken ? "cookie" : "none",
       chatBaseUrl,
       chatKey,
     });
@@ -50,18 +48,19 @@ export function GatewayConnection() {
       setStatus(`❌ ${saved.error}`);
       return;
     }
-    setToken("");
     setChatKey("");
     if (saved.connection) setConn(saved.connection);
 
     setStatus("Testing connection…");
     const t = await testConnection();
     if (t.ok) {
-      setConnected(true);
+      setConnected(t.authenticated === true);
       setStatus(
-        t.authenticated === false
-          ? `⚠️ Reachable but NOT authenticated — set auth mode "basic" + valid credentials. Current model: ${t.model ?? "?"}`
-          : `✅ Connected${t.authenticated ? " & authenticated" : ""}${t.loopback ? " (loopback, no auth)" : ""}. Current model: ${t.model ?? "?"}`,
+        t.session_expired
+          ? `⚠️ Session expired — click LOGIN to sign in again. Model: ${t.model ?? "?"}`
+          : t.authenticated
+            ? `✅ Connected & authenticated. Model: ${t.model ?? "?"}`
+            : `⚠️ Reachable but NOT authenticated — click LOGIN if the dashboard requires it. Model: ${t.model ?? "?"}`,
       );
     } else {
       setConnected(false);
@@ -69,15 +68,64 @@ export function GatewayConnection() {
     }
   };
 
+  const onLogin = async (username: string, password: string) => {
+    setLoggingIn(true);
+    setStatus("Signing in…");
+    const r = await login(username, password);
+    setLoggingIn(false);
+    if (!r.ok) {
+      setStatus(`❌ ${r.error ?? "Login failed"}`);
+      return;
+    }
+    setShowLogin(false);
+    setStatus("Signed in. Testing…");
+    // Re-fetch the public view to pick up hasToken, then probe Hermes.
+    const fresh = await getConnection();
+    if (fresh) setConn(fresh);
+    const t = await testConnection();
+    setConnected(t.ok && t.authenticated === true);
+    setStatus(
+      t.ok
+        ? `✅ Signed in & authenticated. Model: ${t.model ?? "?"}`
+        : `⚠️ Signed in, but probe failed: ${t.error ?? `HTTP ${t.status}`}`,
+    );
+  };
+
+  const onLogout = async () => {
+    setStatus("Signing out…");
+    const fresh = await logout();
+    if (fresh) setConn(fresh);
+    setConnected(false);
+    setStatus("Signed out. Click LOGIN to sign in again.");
+  };
+
   return (
     <section className="border border-hair bg-paneldk p-4">
-      <div className="mb-3 font-mono text-[10.5px] uppercase tracking-[0.22em] text-muted">
-        ⌁ GATEWAY
+      <div className="mb-3 flex items-center justify-between">
+        <div className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-muted">
+          ⌁ GATEWAY
+        </div>
+        {conn && (
+          <span className="flex items-center gap-1.5">
+            <span
+              className={`status-dot ${
+                connected ? "status-dot-malach" : "status-dot-carnelian"
+              }`}
+            />
+            <span className="font-mono text-[11px] text-muted">
+              {connected
+                ? "connected"
+                : conn.hasToken
+                  ? "signed in — probe again"
+                  : "not connected"}
+            </span>
+          </span>
+        )}
       </div>
       <p className="mb-4 font-mono text-[12px] text-parch">
         The Hermes connection. Required for the Command chamber and for chatting
-        with Hermes Agent. Every request is proxied server-side — your token and
-        key never reach the browser.
+        with Hermes Agent. Every request is proxied server-side — your session
+        cookie and API key never reach the browser.
       </p>
 
       {status && (
@@ -98,73 +146,42 @@ export function GatewayConnection() {
         />
       </label>
 
-      <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <label className="block">
-          <span className="mb-1 block font-mono text-[11px] uppercase tracking-[0.12em] text-muted">
-            Auth mode
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <button
+          onClick={onSaveAndTest}
+          className="btn-gold px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em]"
+        >
+          SAVE & TEST
+        </button>
+        {conn?.isLoopback && !conn.hasToken && (
+          <span className="font-mono text-[11px] text-mutedlo">
+            Loopback — no auth required.
           </span>
-          <select
-            className="inp"
-            value={authMode}
-            onChange={(e) => setAuthMode(e.target.value)}
-          >
-            <option value="auto">auto (none on loopback, else bearer)</option>
-            <option value="none">none</option>
-            <option value="bearer">bearer token</option>
-            <option value="cookie">session cookie</option>
-            <option value="session">session (X-Hermes-Session-Token)</option>
-            <option value="basic">basic (username + password)</option>
-          </select>
-        </label>
-        <p className="col-span-1 -mt-1 font-mono text-[10.5px] text-mutedlo sm:col-span-2">
-          {authMode === "basic"
-            ? "Dashboard uses HTTP Basic Auth for its /api/* endpoints."
-            : authMode === "session"
-              ? "Dashboard's model catalog and model switching require session mode."
-              : "Auto: no auth on loopback, bearer token otherwise."}
-        </p>
-        <label className="block">
-          <span className="mb-1 block font-mono text-[11px] uppercase tracking-[0.12em] text-muted">
-            Token / cookie {conn?.hasToken ? "(set — blank keeps it)" : ""}
-          </span>
-          <input
-            className="inp"
-            type="password"
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            placeholder={authMode === "cookie" ? "session=…" : "token…"}
-          />
-        </label>
+        )}
+        {(!conn?.isLoopback || conn.hasToken) && (
+          <>
+            {conn?.hasToken ? (
+              <button
+                onClick={onLogout}
+                className="border border-hair px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-parch hover:border-carnelian hover:text-carnelian"
+              >
+                LOGOUT
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowLogin(true)}
+                className="border border-gold px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-gold hover:bg-gold hover:text-goldink"
+              >
+                LOGIN
+              </button>
+            )}
+          </>
+        )}
       </div>
 
-      {authMode === "basic" && (
-        <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="block">
-            <span className="mb-1 block font-mono text-[11px] uppercase tracking-[0.12em] text-muted">
-              Username {conn?.hasUsername ? "(set — blank keeps it)" : ""}
-            </span>
-            <input
-              className="inp"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="michael"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1 block font-mono text-[11px] uppercase tracking-[0.12em] text-muted">
-              Password {conn?.hasPassword ? "(set — blank keeps it)" : ""}
-            </span>
-            <input
-              className="inp"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="password…"
-            />
-          </label>
-        </div>
-      )}
-
+      <div className="mb-1 mt-6 font-mono text-[10.5px] uppercase tracking-[0.22em] text-muted">
+        ⌁ INFERENCE (CHAT)
+      </div>
       <label className="mb-3 block">
         <span className="mb-1 block font-mono text-[11px] uppercase tracking-[0.12em] text-muted">
           Chat (inference /v1) base URL — default :8642
@@ -190,34 +207,99 @@ export function GatewayConnection() {
         />
       </label>
 
-      {conn && (
-        <p className="mb-3 font-mono text-[11px] text-mutedlo">
-          {conn.isLoopback
-            ? "Loopback URL detected — Hermes serves /api/* without auth here."
-            : "Non-loopback URL — Hermes requires auth; set a token above."}
-        </p>
+      {showLogin && (
+        <LoginModal
+          busy={loggingIn}
+          onCancel={() => setShowLogin(false)}
+          onSubmit={onLogin}
+          initialUsername=""
+        />
       )}
-
-      <div className="flex items-center gap-2">
-        <button
-          onClick={onSaveAndTest}
-          className="btn-gold px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em]"
-        >
-          SAVE & TEST
-        </button>
-        {conn && (
-          <span className="flex items-center gap-1.5">
-            <span
-              className={`status-dot ${
-                connected ? "status-dot-malach" : "status-dot-carnelian"
-              }`}
-            />
-            <span className="font-mono text-[11px] text-muted">
-              {connected ? "connected" : "not connected"}
-            </span>
-          </span>
-        )}
-      </div>
     </section>
+  );
+}
+
+function LoginModal({
+  busy,
+  initialUsername,
+  onSubmit,
+  onCancel,
+}: {
+  busy: boolean;
+  initialUsername: string;
+  onSubmit: (username: string, password: string) => void;
+  onCancel: () => void;
+}) {
+  const [username, setUsername] = useState(initialUsername);
+  const [password, setPassword] = useState("");
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!username || !password) return;
+    onSubmit(username, password);
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      onClick={onCancel}
+    >
+      <form
+        onClick={(e) => e.stopPropagation()}
+        onSubmit={submit}
+        className="w-full max-w-sm border border-gold bg-paneldk p-5 shadow-2xl"
+      >
+        <div className="mb-1 font-display text-[18px] uppercase tracking-[0.08em] text-gold">
+          ⌁ Dashboard Login
+        </div>
+        <p className="mb-4 font-mono text-[11px] text-muted">
+          Sign in to the Hermes dashboard. Your password is used once and never
+          stored — only the resulting session cookie is kept.
+        </p>
+        <label className="mb-3 block">
+          <span className="mb-1 block font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted">
+            Username
+          </span>
+          <input
+            className="inp"
+            autoFocus
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="michael"
+            disabled={busy}
+          />
+        </label>
+        <label className="mb-4 block">
+          <span className="mb-1 block font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted">
+            Password
+          </span>
+          <input
+            className="inp"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            disabled={busy}
+          />
+        </label>
+        <div className="flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={busy}
+            className="border border-hair px-3 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-parch hover:border-hairlit hover:text-marble disabled:opacity-50"
+          >
+            CANCEL
+          </button>
+          <button
+            type="submit"
+            disabled={busy || !username || !password}
+            className="btn-gold px-3 py-2 font-mono text-[11px] uppercase tracking-[0.18em] disabled:opacity-50"
+          >
+            {busy ? "SIGNING IN…" : "SIGN IN"}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }

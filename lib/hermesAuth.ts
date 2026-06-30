@@ -3,27 +3,34 @@
 // logic (the easy thing to get subtly wrong) is unit-testable. `lib/hermes.ts`
 // re-exports these and owns the disk/fetch side.
 
-export type HermesAuthMode = "auto" | "none" | "bearer" | "cookie" | "session" | "basic";
+/**
+ * How to authenticate to `/api/*` on the Hermes dashboard.
+ *
+ * - "none"   : never send auth. Use when the admin URL is loopback and the
+ *              dashboard has no auth configured.
+ * - "cookie" : send a dashboard session cookie obtained from the
+ *              `/auth/password-login` flow. The Settings UI prompts for
+ *              username + password, the server logs in, and the resulting
+ *              `hermes_session_at` cookie is what gets stored. The
+ *              credentials themselves are never persisted.
+ */
+export type HermesAuthMode = "none" | "cookie";
 
 export interface HermesConnection {
   /** Dashboard / management base URL. Hermes' dashboard defaults to :9119. */
   adminBaseUrl: string;
   /**
-   * How to authenticate to `/api/*`:
-   * - "auto"    : no auth on loopback; bearer token otherwise (if present)
-   * - "none"    : never send auth
-   * - "bearer"  : Authorization: Bearer <token>
-   * - "cookie"  : Cookie: <token>  (paste a dashboard session cookie)
-   * - "session" : X-Hermes-Session-Token: <token>  (Hermes dashboard session token)
-   * - "basic"   : Authorization: Basic <base64(username:password)>  (dashboard basic auth)
+   * How to authenticate to `/api/*`. See HermesAuthMode for details. Most
+   * installs will use "none" (loopback) or "cookie" (basic auth via the
+   * dashboard login flow).
    */
   authMode: HermesAuthMode;
-  /** Secret token / cookie value. Stored server-side, never returned raw. */
+  /**
+   * Secret session cookie value (e.g. `hermes_session_at=<token>`). Stored
+   * server-side, never returned raw to the browser. Obtained from the
+   * `/auth/password-login` flow; the UI clears it on logout.
+   */
   token?: string;
-  /** Username for basic auth mode. Stored server-side, never returned raw. */
-  username?: string;
-  /** Password for basic auth mode. Stored server-side, never returned raw. */
-  password?: string;
   /**
    * Inference (`/v1`) base URL for chat. Hermes's chat plane is a separate port
    * (default :8642) from the management plane (:9119) above, so it's stored
@@ -45,9 +52,8 @@ export interface HermesConnection {
 export interface PublicHermesConnection {
   adminBaseUrl: string;
   authMode: HermesAuthMode;
+  /** True when a session cookie is currently stored and ready to use. */
   hasToken: boolean;
-  hasUsername: boolean;
-  hasPassword: boolean;
   isLoopback: boolean;
   chatBaseUrl?: string;
   hasChatKey: boolean;
@@ -74,28 +80,17 @@ export function isLoopbackUrl(urlStr: string): boolean {
 export function authHeaders(conn: HermesConnection): Record<string, string> {
   const loopback = isLoopbackUrl(conn.adminBaseUrl);
   let mode = conn.authMode;
-  if (mode === "auto") mode = loopback ? "none" : conn.token ? "bearer" : "none";
-
-  if (mode === "bearer") {
-    if (conn.token) return { Authorization: `Bearer ${conn.token}` };
+  if (loopback && mode === "cookie" && !conn.token) {
+    // Loopback without a stored cookie is "none" — don't send an empty
+    // Cookie header.
     return {};
   }
+
   if (mode === "cookie") {
     if (conn.token) return { Cookie: conn.token };
     return {};
   }
-  if (mode === "session") {
-    if (conn.token) return { "X-Hermes-Session-Token": conn.token };
-    return {};
-  }
-  if (mode === "basic") {
-    if (conn.username && conn.password) {
-      const encoded = Buffer.from(`${conn.username}:${conn.password}`).toString("base64");
-      return { Authorization: `Basic ${encoded}` };
-    }
-    return {};
-  }
-  // "none" or any unrecognized mode — no auth
+  // "none" (the default) — never send auth.
   return {};
 }
 
@@ -104,8 +99,6 @@ export function toPublicConnection(c: HermesConnection): PublicHermesConnection 
     adminBaseUrl: c.adminBaseUrl,
     authMode: c.authMode,
     hasToken: Boolean(c.token),
-    hasUsername: Boolean(c.username),
-    hasPassword: Boolean(c.password),
     isLoopback: isLoopbackUrl(c.adminBaseUrl),
     chatBaseUrl: c.chatBaseUrl,
     hasChatKey: Boolean(c.chatKey),

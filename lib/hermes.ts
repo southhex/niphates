@@ -33,10 +33,8 @@ export {
 function seedFromEnv(): HermesConnection {
   return {
     adminBaseUrl: process.env.HERMES_ADMIN_URL || "http://127.0.0.1:9119",
-    authMode: (process.env.HERMES_ADMIN_AUTH as HermesAuthMode) || "auto",
+    authMode: ((process.env.HERMES_ADMIN_AUTH as HermesAuthMode) || "none") as HermesAuthMode,
     token: process.env.HERMES_ADMIN_TOKEN || "",
-    username: process.env.HERMES_ADMIN_USERNAME || "",
-    password: process.env.HERMES_ADMIN_PASSWORD || "",
     chatBaseUrl: process.env.HERMES_BASE_URL || "http://127.0.0.1:8642/v1",
     chatKey: process.env.HERMES_API_KEY || "",
   };
@@ -57,9 +55,19 @@ export async function getHermesConnection(): Promise<HermesConnection> {
 export async function saveHermesConnection(
   conn: HermesConnection,
 ): Promise<HermesConnection> {
-  // Invalidate session cache when connection config changes
-  sessionCache = null;
   return store.write(conn);
+}
+
+/**
+ * Clear the stored session cookie without touching anything else. Called by
+ * the logout endpoint and by hermesFetch itself when it sees a 401, so the
+ * UI's next test will report "needs login" rather than hitting Hermes with
+ * a stale cookie.
+ */
+export async function clearHermesCookie(): Promise<HermesConnection> {
+  const current = await store.read();
+  const next: HermesConnection = { ...current, token: "" };
+  return store.write(next);
 }
 
 export interface HermesFetchInit {
@@ -73,64 +81,15 @@ export interface HermesFetchInit {
   timeoutMs?: number;
 }
 
-// --- Basic auth session management (in-memory, never persisted) ---
-
-interface SessionCache {
-  cookie: string;
-  connFingerprint: string; // invalidated when connection config changes
-}
-
-let sessionCache: SessionCache | null = null;
-let loginPromise: Promise<SessionCache | null> | null = null;
-
-/** Fingerprint the connection config so we know when to re-auth. */
-function connFingerprint(conn: HermesConnection): string {
-  return `${conn.adminBaseUrl}|${conn.username}|${conn.password}`;
-}
-
 /**
- * Authenticate against the Hermes dashboard's /auth/password-login endpoint.
- * Returns the hermes_session_at cookie value for use on subsequent API calls.
+ * Sentinel for "the stored session cookie is no longer valid." The proxy
+ * route and connection-test endpoint translate this into a JSON field so the
+ * UI can prompt re-login instead of just showing a generic HTTP 401.
  */
-async function basicLogin(conn: HermesConnection): Promise<SessionCache | null> {
-  if (!conn.username || !conn.password) return null;
-
-  const base = conn.adminBaseUrl.replace(/\/$/, "");
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 10000);
-  try {
-    const res = await fetch(`${base}/auth/password-login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        provider: "basic",
-        username: conn.username,
-        password: conn.password,
-        next: "",
-      }),
-      signal: ctrl.signal,
-    });
-    if (!res.ok) return null;
-
-    // Extract the access token cookie from the Set-Cookie header.
-    // The value is quoted: hermes_session_at="<token>"; ...
-    const setCookie = res.headers.get("set-cookie");
-    const atMatch = setCookie?.match(/hermes_session_at=([^;]+)/);
-    if (!atMatch) return null;
-    // Strip surrounding quotes if present
-    let tokenVal = atMatch[1];
-    if (tokenVal.startsWith('"') && tokenVal.endsWith('"')) {
-      tokenVal = tokenVal.slice(1, -1);
-    }
-
-    return {
-      cookie: `hermes_session_at=${tokenVal}`,
-      connFingerprint: connFingerprint(conn),
-    };
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(t);
+export class HermesSessionExpiredError extends Error {
+  constructor() {
+    super("Session expired");
+    this.name = "HermesSessionExpiredError";
   }
 }
 
@@ -138,6 +97,10 @@ async function basicLogin(conn: HermesConnection): Promise<SessionCache | null> 
  * Make an authenticated request to a Hermes management path.
  * `path` is the upstream path including its leading "/api/..." segment and any
  * query string, e.g. "/api/model/info" or "/api/sessions/search?q=foo".
+ *
+ * Auth policy: in "cookie" mode, the stored `hermes_session_at=…` value is
+ * sent on every request. If Hermes returns 401, the cookie is cleared and a
+ * HermesSessionExpiredError is thrown so the caller can prompt re-login.
  */
 export async function hermesFetch(
   apiPath: string,
@@ -147,26 +110,7 @@ export async function hermesFetch(
   const base = conn.adminBaseUrl.replace(/\/$/, "");
   const url = base + (apiPath.startsWith("/") ? apiPath : `/${apiPath}`);
 
-  // Build auth headers. For basic auth mode, transparently login and use the
-  // session cookie (the dashboard doesn't accept Basic auth directly on API
-  // endpoints — it requires a session cookie from /auth/password-login).
-  let extraHeaders: Record<string, string> = {};
-  if (conn.authMode === "basic") {
-    const fp = connFingerprint(conn);
-    if (!sessionCache || sessionCache.connFingerprint !== fp) {
-      // Deduplicate concurrent login attempts
-      if (!loginPromise) {
-        loginPromise = basicLogin(conn);
-      }
-      sessionCache = await loginPromise;
-      loginPromise = null;
-    }
-    if (sessionCache) {
-      extraHeaders["Cookie"] = sessionCache.cookie;
-    }
-  } else {
-    extraHeaders = authHeaders(conn);
-  }
+  const extraHeaders = authHeaders(conn);
 
   const ctrl = new AbortController();
   const timeout = setTimeout(() => ctrl.abort(), init.timeoutMs ?? 15000);
@@ -177,12 +121,24 @@ export async function hermesFetch(
   }
 
   try {
-    return await fetch(url, {
+    const res = await fetch(url, {
       method: init.method || "GET",
       headers: { ...extraHeaders, ...(init.headers || {}) },
       body: init.body,
       signal: ctrl.signal,
     });
+    // Cookie mode + 401 → the stored session is no longer valid. Drop it so
+    // the next probe doesn't repeat the same 401, and surface a typed error
+    // so the route can return a structured "needs re-login" response.
+    if (
+      res.status === 401 &&
+      conn.authMode === "cookie" &&
+      conn.token
+    ) {
+      await clearHermesCookie();
+      throw new HermesSessionExpiredError();
+    }
+    return res;
   } finally {
     clearTimeout(timeout);
   }

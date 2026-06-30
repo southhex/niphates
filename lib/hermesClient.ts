@@ -147,10 +147,8 @@ export interface ActiveProfileResponse {
 
 export interface PublicHermesConnection {
   adminBaseUrl: string;
-  authMode: "auto" | "none" | "bearer" | "cookie" | "session" | "basic";
+  authMode: "none" | "cookie";
   hasToken: boolean;
-  hasUsername: boolean;
-  hasPassword: boolean;
   isLoopback: boolean;
   chatBaseUrl?: string;
   hasChatKey: boolean;
@@ -184,9 +182,6 @@ export async function getConnection(): Promise<PublicHermesConnection | null> {
 export async function saveConnection(body: {
   adminBaseUrl: string;
   authMode: string;
-  token?: string;
-  username?: string;
-  password?: string;
   chatBaseUrl?: string;
   chatKey?: string;
 }): Promise<{ ok: boolean; error?: string; connection?: PublicHermesConnection }> {
@@ -204,6 +199,8 @@ export interface ConnectionTest {
   ok: boolean;
   reachable?: boolean;
   authenticated?: boolean;
+  /** True when the stored session cookie is no longer valid (UI should prompt re-login). */
+  session_expired?: boolean;
   loopback?: boolean;
   model?: string | null;
   provider?: string | null;
@@ -214,4 +211,35 @@ export interface ConnectionTest {
 export async function testConnection(): Promise<ConnectionTest> {
   const res = await fetch("/api/hermes/connection/test", { method: "POST" });
   return (await res.json()) as ConnectionTest;
+}
+
+/**
+ * Trade dashboard username + password for a session cookie. The cookie is
+ * stored server-side and credentials are discarded. Used by the Settings
+ * UI's login modal.
+ */
+export async function login(
+  username: string,
+  password: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const res = await fetch("/api/hermes/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+  const d = (await res.json().catch(() => ({}))) as {
+    error?: string;
+  };
+  if (!res.ok) return { ok: false, error: d.error || `HTTP ${res.status}` };
+  return { ok: true };
+}
+
+/** Clear the stored session cookie. hermesFetch also calls this on 401. */
+export async function logout(): Promise<PublicHermesConnection | null> {
+  const res = await fetch("/api/hermes/logout", { method: "POST" });
+  if (!res.ok) return null;
+  const d = (await res.json().catch(() => ({}))) as {
+    connection?: PublicHermesConnection;
+  };
+  return d.connection ?? null;
 }

@@ -1,11 +1,12 @@
 // Two-probe Hermes connection test: /api/model/info (unauthenticated, reachability)
-// then /api/model/options (authenticated) to confirm the token separately.
+// then /api/model/options (authenticated) to confirm the cookie separately.
 
 import {
   getHermesConnection,
   hermesFetch,
   hermesError,
   isLoopbackUrl,
+  HermesSessionExpiredError,
 } from "@/lib/hermes";
 
 export const runtime = "nodejs";
@@ -31,22 +32,28 @@ export async function POST() {
     const info = await infoRes.json().catch(() => ({}));
 
     // Reachability is proven. Probe an authenticated endpoint to confirm the
-    // token. A separate try/catch so an auth-probe network error doesn't get
-    // reported as unreachable. `authenticated` is true only on a 2xx — a 401/403
-    // means the token is wrong; any other non-2xx (5xx, etc.) is not a
-    // confirmed auth success, so we report false rather than guessing.
+    // cookie. A separate try/catch so an auth-probe error doesn't get
+    // reported as unreachable. `authenticated` is true only on a 2xx — a 401
+    // surfaces as `session_expired` so the UI can prompt re-login.
     let authenticated = false;
+    let sessionExpired = false;
     try {
       const optRes = await hermesFetch("/api/model/options", { timeoutMs: 8000 });
       authenticated = optRes.ok;
-    } catch {
-      authenticated = false;
+    } catch (err) {
+      if (err instanceof HermesSessionExpiredError) {
+        sessionExpired = true;
+        authenticated = false;
+      } else {
+        authenticated = false;
+      }
     }
 
     return Response.json({
       ok: true,
       reachable: true,
       authenticated,
+      session_expired: sessionExpired,
       loopback,
       model: info?.model ?? info?.current ?? null,
       provider: info?.provider ?? null,

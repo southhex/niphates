@@ -62,22 +62,16 @@ export const providerSchema = z.object({
   maxTokens: z.number().int().positive().optional(),
 });
 
-export const hermesAuthModeSchema = z.enum([
-  "auto",
-  "none",
-  "bearer",
-  "cookie",
-  "session",
-  "basic",
-]);
+export const hermesAuthModeSchema = z.enum(["none", "cookie"]);
 
 /** PUT body for the Hermes connection — partial; merged over current config. */
 export const hermesConnectionInputSchema = z.object({
   adminBaseUrl: z.string().url().optional(),
   authMode: hermesAuthModeSchema.optional(),
+  // Session cookie value from the dashboard `/auth/password-login` flow. Blank
+  // means "keep the stored one". The UI uses a separate /api/hermes/login
+  // route to obtain this — username + password are never persisted.
   token: z.string().optional(),
-  username: z.string().optional(),
-  password: z.string().optional(),
   // The Gateway also owns the inference (/v1) endpoint for chat. Blank chatKey
   // (like a blank token) means "keep the stored secret".
   chatBaseUrl: z.string().url().optional(),

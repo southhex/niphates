@@ -20,95 +20,39 @@ describe("isLoopbackUrl", () => {
 });
 
 describe("authHeaders", () => {
-  it("auto: sends nothing on loopback", () => {
-    expect(
-      authHeaders({
-        adminBaseUrl: "http://127.0.0.1:9119",
-        authMode: "auto",
-        token: "secret",
-      }),
-    ).toEqual({});
-  });
-
-  it("auto: sends bearer on a non-loopback host when a token is present", () => {
-    expect(
-      authHeaders({
-        adminBaseUrl: "https://hermes.example.com",
-        authMode: "auto",
-        token: "secret",
-      }),
-    ).toEqual({ Authorization: "Bearer secret" });
-  });
-
-  it("auto: sends nothing off-loopback when no token", () => {
-    expect(
-      authHeaders({ adminBaseUrl: "https://hermes.example.com", authMode: "auto" }),
-    ).toEqual({});
-  });
-
-  it("explicit bearer / cookie modes build the right header", () => {
-    expect(
-      authHeaders({ adminBaseUrl: "http://127.0.0.1:9119", authMode: "bearer", token: "t" }),
-    ).toEqual({ Authorization: "Bearer t" });
-    expect(
-      authHeaders({ adminBaseUrl: "http://127.0.0.1:9119", authMode: "cookie", token: "sid=abc" }),
-    ).toEqual({ Cookie: "sid=abc" });
-  });
-
   it("none mode never sends auth even with a token", () => {
     expect(
       authHeaders({ adminBaseUrl: "https://hermes.example.com", authMode: "none", token: "t" }),
     ).toEqual({});
   });
 
-  it("session: sends the X-Hermes-Session-Token header", () => {
+  it("none mode on loopback sends nothing", () => {
     expect(
-      authHeaders({
-        adminBaseUrl: "http://100.127.15.14:9119",
-        authMode: "session",
-        token: "tok",
-      }),
-    ).toEqual({ "X-Hermes-Session-Token": "tok" });
-  });
-
-  it("session: sends nothing without a token", () => {
-    expect(
-      authHeaders({
-        adminBaseUrl: "http://100.127.15.14:9119",
-        authMode: "session",
-      }),
+      authHeaders({ adminBaseUrl: "http://127.0.0.1:9119", authMode: "none" }),
     ).toEqual({});
   });
 
-  it("basic: sends Authorization: Basic header with base64 encoded username:password", () => {
-    const headers = authHeaders({
-      adminBaseUrl: "http://127.0.0.1:9119",
-      authMode: "basic",
-      username: "michael",
-      password: "correct-horse-battery-staple",
-    });
-    expect(headers).toHaveProperty("Authorization");
-    expect(headers.Authorization).toMatch(/^Basic /);
-    // Decode and verify
-    const b64 = headers.Authorization!.slice(6);
-    const decoded = Buffer.from(b64, "base64").toString();
-    expect(decoded).toBe("michael:correct-horse-battery-staple");
+  it("cookie mode sends Cookie: <token>", () => {
+    expect(
+      authHeaders({ adminBaseUrl: "http://127.0.0.1:9119", authMode: "cookie", token: "sid=abc" }),
+    ).toEqual({ Cookie: "sid=abc" });
   });
 
-  it("basic: sends nothing without username or password", () => {
+  it("cookie mode on a non-loopback host sends Cookie: <token>", () => {
     expect(
-      authHeaders({
-        adminBaseUrl: "http://127.0.0.1:9119",
-        authMode: "basic",
-        username: "user",
-      }),
+      authHeaders({ adminBaseUrl: "https://hermes.example.com", authMode: "cookie", token: "sid=abc" }),
+    ).toEqual({ Cookie: "sid=abc" });
+  });
+
+  it("cookie mode without a token sends nothing", () => {
+    expect(
+      authHeaders({ adminBaseUrl: "https://hermes.example.com", authMode: "cookie" }),
     ).toEqual({});
+  });
+
+  it("cookie mode on loopback without a token sends nothing (no empty Cookie header)", () => {
     expect(
-      authHeaders({
-        adminBaseUrl: "http://127.0.0.1:9119",
-        authMode: "basic",
-        password: "pass",
-      }),
+      authHeaders({ adminBaseUrl: "http://127.0.0.1:9119", authMode: "cookie" }),
     ).toEqual({});
   });
 });
