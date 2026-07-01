@@ -89,22 +89,26 @@ async function* hermesRunsStream(
     : {};
 
   // With server-side sessions, only the latest user turn is the run input;
-  // Hermes reconstructs prior context from session_id. We also pass the prior
-  // turns as `conversation_history` so a freshly-evicted or unknown session
-  // can still be bootstrapped (the happy path merges them with the stored
-  // transcript, the unhappy path is a clean first-message fallback).
+  // Hermes reconstructs prior context from session_id.
   const lastUser = [...opts.messages].reverse().find((m) => m.role === "user");
-  const priorTurns = opts.messages.slice(0, -1);
-  // Project to the wire format Hermes expects: role + content only. Drop
-  // client-only metadata (blocks, reasoning, toolCalls) that Hermes has not
-  // declared as part of its Runs API input contract.
-  const conversationHistory = priorTurns.length
-    ? priorTurns.map((m) => ({ role: m.role, content: m.content }))
-    : undefined;
   // Hermes' effective session id wins over the Niphates conversation id when
   // a prior turn captured a rotation. Otherwise Hermes resumes the parent
   // session as expected.
   const effectiveSessionId = opts.hermesSessionId || opts.conversationId;
+  // Only bootstrap `conversation_history` when we have NO session to resume.
+  // When a session_id is present Hermes already holds the full transcript, so
+  // re-sending prior turns every turn is redundant — and actively harmful: it
+  // makes Hermes' auto-title see >2 user messages immediately and bail, and it
+  // duplicates context Hermes has to reconcile. Sending it only as a stateless
+  // fallback keeps the first-message path working without the double-feed.
+  const priorTurns = opts.messages.slice(0, -1);
+  // Project to the wire format Hermes expects: role + content only. Drop
+  // client-only metadata (blocks, reasoning, toolCalls) that Hermes has not
+  // declared as part of its Runs API input contract.
+  const conversationHistory =
+    !effectiveSessionId && priorTurns.length
+      ? priorTurns.map((m) => ({ role: m.role, content: m.content }))
+      : undefined;
 
   const startRes = await fetch(`${base}/runs`, {
     method: "POST",
