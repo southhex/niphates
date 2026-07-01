@@ -11,6 +11,7 @@ import { HermesModelCatalog } from "@/components/HermesModelCatalog";
 import { HermesModelFilter } from "@/components/HermesModelFilter";
 import { ConnectorsView } from "@/components/ConnectorsView";
 import { SessionsView } from "@/components/SessionsView";
+import { HonchoDashboard } from "@/components/HonchoDashboard";
 import { CHAMBER_SUBSECTIONS } from "@/components/chambers";
 import {
   getConnection,
@@ -132,6 +133,8 @@ export function CommandView({ section }: { section: string }) {
         </div>
       ) : section === "sessions" ? (
         <SessionsView />
+      ) : section === "memory" ? (
+        <HonchoDashboard />
       ) : section === "models" ? (
         <section className="border border-hair bg-paneldk p-4">
           <div className="mb-3 font-mono text-[10.5px] uppercase tracking-[0.22em] text-muted">

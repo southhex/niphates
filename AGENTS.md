@@ -2,6 +2,12 @@
 
 Guidance for AI coding agents working in this repository. If you've read CLAUDE.md, this is the same project through a tooling-focused lens — read both, but when they disagree, CLAUDE.md is the source of truth on architecture.
 
+## Active plan & roadmap
+
+- **Active plan (in progress):** check `.hermes/plans/` for the most recent dated plan file — that's what's currently being built. Read it before suggesting a redesign of anything it touches.
+- **Backlog / future ideas:** `ROADMAP.md` at the repo root. Items there are *shaped but not started* — promoting one to a plan is its own step. When you complete a roadmap item, move it to a plan, execute, then mark it **Done** with a date in the ROADMAP (don't delete — keeps a history).
+- **Conventions, architecture, and gotchas** live in this file (below) and in CLAUDE.md. Read those before grepping.
+
 ## What this is
 
 Niphates — a self-hosted, installable (PWA) multi-provider LLM chat app built on Next.js 15 (App Router) + React 19 + TypeScript + Tailwind. Default/priority provider is **Hermes Agent**; also talks to Ollama, OpenRouter, KiloCode, OpenAI, and Anthropic. Single-user by design: no auth, config lives in flat JSON files on disk.
