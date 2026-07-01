@@ -42,6 +42,12 @@ export const chatRequestSchema = z.object({
   maxTokens: z.number().int().positive().max(200_000).optional(),
   /** Used as the Hermes Runs session_id for server-side multi-turn context. */
   conversationId: z.string().optional(),
+  /**
+   * Hermes-effective session id (if Hermes has rotated it). Takes precedence
+   * over conversationId when both are present, so the request lands on the
+   * compressed continuation rather than the stale parent.
+   */
+  hermesSessionId: z.string().optional(),
 });
 
 export const providerTypeSchema = z.enum(["openai", "anthropic"]);
@@ -89,6 +95,7 @@ export const conversationSchema = z.object({
   createdAt: z.number(),
   updatedAt: z.number(),
   archived: z.boolean().optional(),
+  hermesSessionId: z.string().optional(),
 });
 
 export const conversationsSchema = z.array(conversationSchema);

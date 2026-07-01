@@ -115,6 +115,13 @@ export type StreamEvent =
   | { kind: "done" }
   /** Emitted immediately after the run is created so the browser can track the run id. */
   | { kind: "run_started"; runId: string }
+  /**
+   * Emitted when Hermes returns a different effective session_id than the one
+   * the client sent (typically after a context-compression rotation — see
+   * NousResearch/hermes-agent#16938). The browser should persist the new id
+   * on the conversation and use it for subsequent turns.
+   */
+  | { kind: "session_updated"; sessionId: string }
   /** A Hermes approval gate: the agent is waiting for the user to approve a command. */
   | {
       kind: "approval";
@@ -134,6 +141,13 @@ export interface ChatRequest {
   temperature?: number;
   /** Max output tokens; overrides the provider default if set. */
   maxTokens?: number;
+  /**
+   * Hermes-effective session id for this conversation (if Hermes has rotated
+   * it during a prior turn's context compression). The Gateway connector uses
+   * this as `session_id` in the Runs API call; falls back to `conversationId`
+   * (the Niphates id) when absent.
+   */
+  hermesSessionId?: string;
 }
 
 export interface Conversation {
@@ -146,6 +160,14 @@ export interface Conversation {
   updatedAt: number;
   /** Archived chats are hidden from the main list but kept on disk. */
   archived?: boolean;
+  /**
+   * Hermes' effective session id for this chat, if it has diverged from `id`.
+   * Hermes may rotate its internal session on context compression; we capture
+   * the new id from the run status response so subsequent turns can reuse the
+   * compressed continuation rather than the stale parent. Empty/undefined means
+   * `id` is still authoritative (the common case).
+   */
+  hermesSessionId?: string;
 }
 
 /** What the client is allowed to see about a provider (no secrets). */

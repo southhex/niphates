@@ -11,6 +11,12 @@ export interface StreamHandlers {
   onTool?: (event: ToolEvent) => void;
   /** Run id for the active Hermes gateway run (used to respond to approvals). */
   onRunStarted?: (runId: string) => void;
+  /**
+   * Hermes has rotated the session id (context compression — issue #16938).
+   * The browser should persist the new id on the conversation and reuse it on
+   * the next turn so the request lands on the compressed continuation.
+   */
+  onSessionIdUpdated?: (sessionId: string) => void;
   /** A Hermes tool approval gate — agent is paused waiting for user consent. */
   onApproval?: (req: {
     approvalId: string;
@@ -31,6 +37,11 @@ export async function streamChatRequest(
     temperature?: number;
     /** Conversation id → Hermes Runs session_id for server-side context. */
     conversationId?: string;
+    /**
+     * Hermes-rotated session id, sent in preference to conversationId when
+     * present. The browser should update this value on `onSessionIdUpdated`.
+     */
+    hermesSessionId?: string;
   },
   handlers: StreamHandlers,
   signal?: AbortSignal,
@@ -80,6 +91,8 @@ export async function streamChatRequest(
             error: evt.error,
           });
         else if (evt.type === "run_started") handlers.onRunStarted?.(evt.runId);
+        else if (evt.type === "session_updated")
+          handlers.onSessionIdUpdated?.(evt.sessionId);
         else if (evt.type === "approval")
           handlers.onApproval?.({
             approvalId: evt.approvalId,

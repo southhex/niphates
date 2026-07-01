@@ -310,10 +310,28 @@ export default function Home() {
 
     currentRunIdRef.current = null;
     await streamChatRequest(
-      { providerId, model, messages: messagesForApi, conversationId: id },
+      {
+        providerId,
+        model,
+        messages: messagesForApi,
+        conversationId: id,
+        hermesSessionId: convo.hermesSessionId,
+      },
       {
         onRunStarted: (runId) => {
           currentRunIdRef.current = runId;
+        },
+        onSessionIdUpdated: (sessionId) => {
+          // Hermes rotated the effective session id (context compression).
+          // Persist on the conversation so the next turn resumes from the
+          // compressed continuation rather than the stale parent.
+          setConversations((prev) => {
+            const next = prev.map((c) =>
+              c.id === id ? { ...c, hermesSessionId: sessionId } : c,
+            );
+            saveConversations(next);
+            return next;
+          });
         },
         onApproval: ({ approvalId, tool, command, description }) => {
           const runId = currentRunIdRef.current;

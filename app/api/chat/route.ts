@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  const { providerId, model, messages, temperature, maxTokens, conversationId } =
+  const { providerId, model, messages, temperature, maxTokens, conversationId, hermesSessionId } =
     parsed.data;
 
   const provider = await getProvider(providerId);
@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
           temperature,
           maxTokens,
           conversationId,
+          hermesSessionId,
           signal: req.signal,
         })) {
           if (ev.kind === "text") send({ type: "delta", text: ev.text });
@@ -69,6 +70,8 @@ export async function POST(req: NextRequest) {
             });
           else if (ev.kind === "run_started")
             send({ type: "run_started", runId: ev.runId });
+          else if (ev.kind === "session_updated")
+            send({ type: "session_updated", sessionId: ev.sessionId });
           else if (ev.kind === "approval")
             send({
               type: "approval",
