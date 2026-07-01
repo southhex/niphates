@@ -82,7 +82,7 @@ Request bodies and on-disk shapes are validated with **zod** schemas in `lib/sch
 
 ## Server-only boundary
 
-`lib/providers.ts`, `lib/connectors.ts`, `lib/hermes.ts`, `lib/jsonStore.ts`, and `lib/conversationStore.ts` all import `"server-only"` and read secrets/disk — **never import them into a client component.** Pure logic extracted for reuse/testing (`lib/sse.ts`, `lib/hermesAuth.ts`, `lib/schemas.ts`, `lib/types.ts`) deliberately omits `"server-only"`. The browser only ever sees redacted views: `toPublic` (providers) and `toPublicConnection` (Hermes), which strip secrets down to a boolean `hasKey`/`hasToken`.
+`lib/providers.ts`, `lib/connectors.ts`, `lib/hermes.ts`, `lib/jsonStore.ts`, and `lib/conversationStore.ts` all import `"server-only"` and read secrets/disk — **never import them into a client component.** `lib/honchoConfig.ts` is also server-only (reads `~/.hermes/honcho.json` for the Honcho API key). Pure logic extracted for reuse/testing (`lib/sse.ts`, `lib/hermesAuth.ts`, `lib/schemas.ts`, `lib/types.ts`) deliberately omits `"server-only"`. The browser only ever sees redacted views: `toPublic` (providers) and `toPublicConnection` (Hermes), which strip secrets down to a boolean `hasKey`/`hasToken`.
 
 ## API routes
 
@@ -93,6 +93,8 @@ app/api/
 ├── conversations/route.ts             # Server-side conversation history
 ├── hermes/connection/route.ts         # Hermes connection config
 ├── hermes/connection/test/route.ts    # Test Hermes connection
+├── honcho-proxy/[...path]/route.ts    # Catch-all proxy → Honcho v3 REST API
+├── honcho-proxy/config/route.ts       # Sanitized Honcho config for the browser
 ├── hx/[...path]/route.ts             # Catch-all proxy → Hermes management API
 ├── providers/route.ts                # Provider CRUD
 ├── providers/[id]/models/route.ts    # List models for a provider
@@ -115,11 +117,25 @@ The app uses a **chamber navigation** pattern — five chambers in the sidebar, 
 | Studio | — | placeholder | Not yet built |
 | Library | Sanctum | `LibraryView` → `SanctumView` | Journaling |
 | Council | — | placeholder | Not yet built |
-| Command | Connectors, Sessions, Models, Cron, Memory, Voice, Channels, Keys | `CommandView` | Hermes control |
+| Command | Connectors, Sessions, Models, Cron, **Memory**, Voice, Channels, Keys | `CommandView` | Hermes control |
+
+> The Command chamber's **Memory** subsection is now built (no longer a placeholder) —
+> it surfaces a self-hosted [Honcho](https://honcho.dev) dashboard. See **Honcho dashboard**
+> below.
 
 `components/chambers.ts` holds the metadata (chamber list + per-chamber subsections) and `firstSubsection(chamber)`. Selecting a chamber resolves `subsection` to its first subsection.
 
 **Sanctum** (`Library → Sanctum`): `components/SanctumView.tsx` (journal UI: entry list + editor + settings), `components/MarkdownEditor.tsx` (CodeMirror 6 live-preview editor), `lib/sanctum.ts` (server-side entry CRUD + settings + word-count cache). Live preview is driven off the **Lezer markdown syntax tree**, NOT regex. YAML frontmatter is stripped from the editing surface but preserved across saves. Entry titles are derived from filenames, not stored in files.
+
+**Memory / Honcho dashboard** (`Command → Memory`): a tabbed dashboard for the self-hosted [Honcho](https://honcho.dev) memory layer. Tabs: **Overview** (status + recent peers/sessions at a glance), **Peers** (with on-demand peer-card expansion showing the curated fact list and working representation), **Sessions** (recent sessions list), **Logs** (live queue status + recent ingestions with auto-refresh toggle, 5s polling when enabled), **Dreams** (manual dream scheduling button). Architecture:
+- `app/api/honcho-proxy/[...path]/route.ts` — catch-all proxy to the Honcho v3 REST API. Reads `~/.hermes/honcho.json` server-side for `baseUrl` and `apiKey`, forwards calls verbatim. Handles 204/205/304 correctly (empty body needs `Response(null)`, not `Response("")`).
+- `app/api/honcho-proxy/config/route.ts` — sanitized config endpoint. Returns workspace, peer names, recall mode, cadence, observation mode, host list, but no `apiKey`.
+- `lib/honchoConfig.ts` — server-only config reader with 30s disk cache. Falls through `$HERMES_HOME/honcho.json` → `~/.hermes/honcho.json` → `~/.honcho/config.json`.
+- `lib/honchoClient.ts` — typed browser client over the proxy (`honchoApi.listPeers`, `getPeerContext`, `listSessions`, `getSessionMessages`, `queueStatus`, `scheduleDream`).
+- `components/HonchoDashboard.tsx` — the tabbed shell + all subcomponents.
+- `components/HonchoLogsTab.tsx` — the Logs tab view.
+
+This is a **third API plane** alongside the inference and Hermes-management planes. The Honcho `/v3/*` API has its own base URL (typically `http://homelab-lan:8000`, NOT the Hermes 9119 admin URL) and its own auth (`Authorization: Bearer <key>` from `honcho.json` if present). Don't conflate it with the Hermes management plane — they share the same proxy pattern but point at different upstreams.
 
 ## Conventions
 

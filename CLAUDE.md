@@ -146,7 +146,8 @@ schemas mirror them for runtime enforcement.
 
 `lib/providers.ts`, `lib/connectors.ts`, `lib/hermes.ts`, `lib/jsonStore.ts`, and
 `lib/conversationStore.ts` all import `"server-only"` and read secrets/disk — **never**
-import them into a client component. Pure logic extracted for reuse/testing
+import them into a client component. `lib/honchoConfig.ts` is also server-only (it
+reads `~/.hermes/honcho.json` for the Honcho API key). Pure logic extracted for reuse/testing
 (`lib/sse.ts`, `lib/hermesAuth.ts`, `lib/schemas.ts`, `lib/types.ts`) deliberately omits
 `"server-only"`. The browser only ever
 sees the redacted views: `toPublic` (providers) and `toPublicConnection` (Hermes), which
@@ -165,7 +166,11 @@ view components (e.g `CommandView`, `LibraryView`) route by subsection string.
 | Studio | — | placeholder | Not yet built |
 | Library | Sanctum | `LibraryView` → `SanctumView` | Journaling |
 | Council | — | placeholder | Not yet built |
-| Command | Connectors, Sessions, Models, Cron, Memory, Voice, Channels, Keys | `CommandView` | Hermes control |
+| Command | Connectors, Sessions, Models, Cron, **Memory**, Voice, Channels, Keys | `CommandView` | Hermes control |
+
+> The Command chamber now includes a built **Memory** subsection (not a placeholder) that
+> surfaces a self-hosted [Honcho](https://honcho.dev) dashboard. See **Honcho dashboard**
+> below.
 
 `components/chambers.ts` holds the metadata (chamber list + per-chamber subsections) and
 `firstSubsection(chamber)`. Selecting a chamber resolves `subsection` to its first subsection
@@ -173,6 +178,46 @@ view components (e.g `CommandView`, `LibraryView`) route by subsection string.
 than a stale or placeholder tab; chambers with no subsections (Dialogue, not-yet-built ones)
 leave `subsection` untouched. `subsection` is a single shared state across chambers.
 `components/ChamberPlaceholder.tsx` renders the generic "not yet built" state.
+
+### Honcho dashboard (`Command → Memory`)
+
+Honcho is the long-term memory layer for the Hermes ecosystem — it stores per-peer
+explicit observations, inductive patterns, and curated peer cards across sessions. The
+dashboard gives the user a window into what's actually in Honcho without SSH-ing into
+the docker host.
+
+- `app/api/honcho-proxy/[...path]/route.ts` — **catch-all proxy to the Honcho REST API**.
+  Reads `~/.hermes/honcho.json` server-side to discover the `baseUrl` (and any
+  `apiKey`), then forwards `/v3/...` calls verbatim. Auth credentials never reach the
+  browser. The proxy handles 204/205/304 (no body) explicitly because `new Response("")`
+  throws on those statuses.
+- `app/api/honcho-proxy/config/route.ts` — sanitized Honcho config endpoint. Returns
+  the workspace name, peer names, recall mode, cadence, observation mode, and host
+  list, but strips `apiKey`. Config is cached on disk for 30s (TTL) since
+  `~/.hermes/honcho.json` only changes when `hermes honcho setup` runs.
+- `lib/honchoConfig.ts` — **server-only** helper. `readHonchoConfig()` searches
+  `$HERMES_HOME/honcho.json`, then `~/.hermes/honcho.json`, then `~/.honcho/config.json`.
+  `toPublicConfig()` produces the redacted browser view.
+- `lib/honchoClient.ts` — browser-side typed client. Every method goes through the
+  proxy. Methods cover peers (`listPeers`, `getPeerContext`), sessions (`listSessions`,
+  `getSessionMessages`), queue (`queueStatus`), and dreams (`scheduleDream`).
+- `components/HonchoDashboard.tsx` — the tabbed shell: Overview (status + recent
+  peers/sessions), Peers (with on-demand peer-card expansion), Sessions, **Logs** (live
+  queue status + recent ingestions with auto-refresh toggle, 5s polling), Dreams
+  (manual dream scheduling). Subcomponents: `PeerRow`, `PeerContextView`, `SessionRow`,
+  `PeerRow` / `SessionRow` / `QueuePanel` / `IngestionsPanel` and helpers are
+  `Stat`, `StatusDot`, `EmptyState`, `ErrorState`, `TabBar`, `OverviewTab`,
+  `PeersTab`, `SessionsTab`, `DreamsTab`.
+- `components/HonchoLogsTab.tsx` — the Logs tab. Auto-refresh polls every 5s when the
+  checkbox is on. Recent-ingestions view pulls the 5 most-recent sessions and shows the
+  last 4 messages from each, sorted by `created_at`. Uses `honchoAgo` and
+  `honchoFmtTime` from the dashboard for consistent time formatting.
+
+This is a **third plane** alongside the inference and Hermes-management planes — the
+Honcho REST API (`/v3/*` upstream) has its own base URL (typically
+`http://homelab-lan:8000`, **not** the Hermes 9119 admin URL) and its own auth
+(`Authorization: Bearer <key>` from honcho.json if present). Conflating it with the
+Hermes management plane is the most common mistake here.
 
 **Connectors** (`Command → Connectors`):
 - `components/ConnectorsView.tsx` — CRUD UI for connector resources
