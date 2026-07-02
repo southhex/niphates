@@ -48,7 +48,9 @@ describe("toConversationHistory", () => {
     // the tool command AND its captured output survive — the whole point
     expect(asst).toContain("cat budget.csv");
     expect(asst).toContain("Period,June 2026");
-    expect(asst).toContain("[tool: Terminal]");
+    // retrospective prose framing, NOT a parrotable "[tool: …]" tag
+    expect(asst).toContain("ran Terminal");
+    expect(asst).not.toContain("[tool:");
   });
 
   it("drops reasoning blocks (ephemeral thinking, not answer content)", () => {
@@ -74,7 +76,22 @@ describe("toConversationHistory", () => {
         },
       ]),
     ]);
-    expect(out[0].content).toContain("— error");
+    // errored tools read as "tried" rather than "ran"
+    expect(out[0].content).toContain("tried web_extract");
+  });
+
+  it("condenses a multi-line command to a single short line (no echoed code block)", () => {
+    const code = "import json\nimport sys\n" + "x = 1\n".repeat(80);
+    const out = toConversationHistory([
+      assistant([
+        { type: "tool", tool: "execute_code", status: "completed", preview: code },
+      ]),
+    ]);
+    const line = out[0].content;
+    expect(line).toContain("ran execute_code");
+    // collapsed to one line — no embedded newlines from the command
+    expect(line.split("\n")).toHaveLength(1);
+    expect(line).toContain("…");
   });
 
   it("truncates very long tool output to the cap", () => {
@@ -103,7 +120,7 @@ describe("toConversationHistory", () => {
     };
     const out = toConversationHistory([user("hi"), legacy]);
     expect(out[1].content).toContain("done");
-    expect(out[1].content).toContain("[tool: Bash]");
+    expect(out[1].content).toContain("ran Bash");
     expect(out[1].content).toContain("ls");
     expect(out[1].content).toContain("file.txt");
   });

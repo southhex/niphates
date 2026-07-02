@@ -34,17 +34,34 @@ function truncate(s: string, max: number): string {
   return `${s.slice(0, max)}\n… [truncated ${s.length - max} chars]`;
 }
 
+/** Collapse whitespace to a single line and cap length — for the command gist. */
+function condense(s: string, max = 200): string {
+  const one = s.replace(/\s+/g, " ").trim();
+  return one.length > max ? `${one.slice(0, max)}…` : one;
+}
+
 /**
- * Render a tool invocation (a `tool` ChatBlock or a legacy ToolEvent) into a
- * compact line: the command/preview, then its captured output when present.
+ * Render a past tool invocation (a `tool` ChatBlock or a legacy ToolEvent) as a
+ * RETROSPECTIVE prose note — deliberately NOT a bracketed "[tool: x]" tag.
+ *
+ * The bracket form got parroted: a weak model (deepseek-v4-flash) saw prior
+ * assistant turns formatted as `[tool: …]` and reproduced that literal string
+ * as its own output instead of emitting a real structured tool call, so the UI
+ * rendered raw text rather than a ToolCard. Past-tense prose ("ran X") reads as
+ * a record of what already happened, not a format to imitate.
+ *
+ * The command is condensed to a single short line (its full text — e.g. a big
+ * code block — is what made the echo egregious and isn't needed for
+ * continuity); the *result* is what prevents re-derivation, so it keeps the
+ * fuller capped output.
  */
 function renderTool(t: Pick<ToolEvent, "tool" | "preview" | "output" | "error">): string {
-  const head = `[tool: ${t.tool}${t.error ? " — error" : ""}]`;
-  const cmd = t.preview?.trim() ? ` ${t.preview.trim()}` : "";
+  const verb = t.error ? "tried" : "ran";
+  const cmd = t.preview?.trim() ? ` — ${condense(t.preview)}` : "";
   const out = t.output?.trim()
-    ? `\n→ ${truncate(t.output.trim(), MAX_TOOL_OUTPUT)}`
+    ? `\n   result: ${truncate(t.output.trim(), MAX_TOOL_OUTPUT)}`
     : "";
-  return `${head}${cmd}${out}`;
+  return `(${verb} ${t.tool}${cmd})${out}`;
 }
 
 /**
