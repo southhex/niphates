@@ -332,6 +332,10 @@ export default function Home() {
             saveConversations(next);
             return next;
           });
+          // Flush immediately so the rotated id is durable before the next
+          // turn fires — saveConversations is debounced/fire-and-forget, so a
+          // quick follow-up message could otherwise go out with the stale id.
+          void flushConversations();
         },
         onApproval: ({ approvalId, tool, command, description }) => {
           const runId = currentRunIdRef.current;

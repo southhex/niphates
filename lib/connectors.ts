@@ -7,6 +7,7 @@ import "server-only";
 import type { ChatMessage, Provider, ProviderType, StreamEvent } from "./types";
 import { sseLines, extractOpenAIDelta, extractAnthropicDelta } from "./sse";
 import { mapRunsEvent } from "./runsEvents";
+import { toConversationHistory } from "./runsHistory";
 
 export interface StreamOptions {
   model: string;
@@ -88,27 +89,26 @@ async function* hermesRunsStream(
     ? { Authorization: `Bearer ${provider.apiKey}` }
     : {};
 
-  // With server-side sessions, only the latest user turn is the run input;
-  // Hermes reconstructs prior context from session_id.
+  // The latest user turn is the run `input`.
   const lastUser = [...opts.messages].reverse().find((m) => m.role === "user");
   // Hermes' effective session id wins over the Niphates conversation id when
   // a prior turn captured a rotation. Otherwise Hermes resumes the parent
   // session as expected.
   const effectiveSessionId = opts.hermesSessionId || opts.conversationId;
-  // Only bootstrap `conversation_history` when we have NO session to resume.
-  // When a session_id is present Hermes already holds the full transcript, so
-  // re-sending prior turns every turn is redundant — and actively harmful: it
-  // makes Hermes' auto-title see >2 user messages immediately and bail, and it
-  // duplicates context Hermes has to reconcile. Sending it only as a stateless
-  // fallback keeps the first-message path working without the double-feed.
+  // ALWAYS send prior turns as `conversation_history`. The Runs API is
+  // stateless for conversation content: Hermes builds the model's message list
+  // purely from what we send here (agent/turn_context.py:
+  // `messages = list(conversation_history)`) and only uses `session_id` for
+  // system-prompt prefix caching, persistence and memory scoping — it does NOT
+  // reconstruct the transcript. Gating this on session presence (as a prior
+  // "stop double-feeding" change did) therefore wiped the model's memory every
+  // turn: there is no double-feed, since session_id never re-injects messages.
+  // toConversationHistory folds each assistant turn's tool commands + outputs
+  // into its content, because the API only accepts {role, content} string pairs
+  // (structured tool calls are rejected).
   const priorTurns = opts.messages.slice(0, -1);
-  // Project to the wire format Hermes expects: role + content only. Drop
-  // client-only metadata (blocks, reasoning, toolCalls) that Hermes has not
-  // declared as part of its Runs API input contract.
-  const conversationHistory =
-    !effectiveSessionId && priorTurns.length
-      ? priorTurns.map((m) => ({ role: m.role, content: m.content }))
-      : undefined;
+  const history = toConversationHistory(priorTurns);
+  const conversationHistory = history.length ? history : undefined;
 
   const startRes = await fetch(`${base}/runs`, {
     method: "POST",
@@ -182,8 +182,16 @@ async function* hermesRunsStream(
             rotatedSessionId = newSessionId;
           }
         }
-      } catch {
-        /* ignore — the turn is done either way */
+      } catch (err) {
+        // Non-fatal: the turn is already complete and, since we now always
+        // resend the full conversation_history, a missed rotation degrades to
+        // a prefix-cache miss rather than lost context. Surface it so a
+        // persistently failing status endpoint is visible instead of silent.
+        console.warn(
+          `[hermes] run status fetch failed (session rotation not captured): ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
       }
     }
   }
