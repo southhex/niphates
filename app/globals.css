@@ -28,6 +28,9 @@
   --agentbody: #E3DDD0;
 }
 
+/* Light theme — currently dormant: the Appearance switcher was removed, so
+   nothing sets data-theme="marble". Kept so the palette survives if a theme
+   toggle returns. */
 [data-theme="marble"] {
   --void:      #F6F2E9;
   --ground:    #EFE9DB;
@@ -98,7 +101,8 @@ body {
 .btn-gold {
   background: var(--gold);
   color: var(--goldink);
-  box-shadow: 0 0 0 1px var(--gold), 0 0 18px rgba(201, 162, 75, 0.2);
+  box-shadow: 0 0 0 1px var(--gold),
+    0 0 18px color-mix(in srgb, var(--gold) 20%, transparent);
   transition: background 0.15s;
 }
 .btn-gold:hover:not(:disabled) {
@@ -113,7 +117,7 @@ body {
   transition: background 0.15s;
 }
 .btn-ghost-gold:hover {
-  background: rgba(201, 162, 75, 0.1);
+  background: var(--goldsoft);
 }
 
 /* Terminal input field */
@@ -127,7 +131,42 @@ body {
 .term-field:focus,
 .term-field:focus-within {
   border-color: var(--gold);
-  box-shadow: 0 0 0 1px var(--gold), 0 0 18px rgba(201, 162, 75, 0.18);
+  box-shadow: 0 0 0 1px var(--gold),
+    0 0 18px color-mix(in srgb, var(--gold) 18%, transparent);
+}
+
+/* Form input — shared by GatewayConnection, ProvidersView, … */
+.inp {
+  width: 100%;
+  background: var(--void);
+  border: 1px solid var(--hairlit);
+  padding: 0.5rem 0.75rem;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.8125rem;
+  color: var(--marble);
+  outline: none;
+}
+.inp:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 1px var(--gold),
+    0 0 18px color-mix(in srgb, var(--gold) 18%, transparent);
+}
+.inp::placeholder {
+  color: var(--mutedlo);
+}
+
+/* Keyboard focus — themed ring on controls that lack their own focus styling
+   (buttons, links, nav). Form fields opt out: they show a gold border/glow via
+   .term-field, .inp, or focus:border-gold, so a global outline would double up
+   (e.g. an inner box nested inside the composer's own gold border). */
+:focus-visible {
+  outline: 1px solid var(--gold);
+  outline-offset: 2px;
+}
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
 }
 
 /* Status dots (square, not circle) */

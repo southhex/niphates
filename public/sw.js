@@ -8,8 +8,8 @@
 // localhost). Served over plain HTTP on a LAN IP this file never runs, so the
 // app has no offline support there — see README.
 
-const CACHE = "niphates-v2";
-const APP_SHELL = ["/", "/settings", "/manifest.webmanifest"];
+const CACHE = "niphates-v4";
+const APP_SHELL = ["/", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

@@ -694,7 +694,7 @@ const writingTheme = EditorView.theme(
     },
     "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection":
       {
-        backgroundColor: "rgba(201, 162, 75, 0.18)",
+        backgroundColor: "color-mix(in srgb, var(--gold) 18%, transparent)",
       },
     "&.cm-focused": { outline: "none" },
 
@@ -723,7 +723,7 @@ const writingTheme = EditorView.theme(
     ".cm-h3": { fontSize: "1.35em", lineHeight: "1.4" },
     ".cm-h4": { fontSize: "1.15em", lineHeight: "1.45" },
     ".cm-h5": { fontSize: "1.05em" },
-    ".cm-h6": { fontSize: "1em", color: "var(--goldsoft)" },
+    ".cm-h6": { fontSize: "1em", color: "var(--muted)" },
 
     ".cm-live-bold": { color: "var(--marble)", fontWeight: "700" },
     ".cm-live-italic": { color: "var(--marble)", fontStyle: "italic" },
@@ -739,7 +739,7 @@ const writingTheme = EditorView.theme(
       cursor: "pointer",
     },
     ".cm-live-code": {
-      backgroundColor: "rgba(0, 0, 0, 0.25)",
+      backgroundColor: "color-mix(in srgb, var(--void) 45%, transparent)",
       borderRadius: "3px",
       padding: "0.1em 0.35em",
       fontFamily: "var(--font-mono), monospace",

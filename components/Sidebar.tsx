@@ -108,7 +108,7 @@ export function Sidebar({
                   }`}
                   style={
                     isActive
-                      ? { textShadow: "0 0 10px rgba(201,162,75,0.55)" }
+                      ? { textShadow: "0 0 10px color-mix(in srgb, var(--gold) 55%, transparent)" }
                       : undefined
                   }
                 >
@@ -240,6 +240,7 @@ function ChatRow({
   onRename: (id: string, title: string) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
   const cancelledRef = useRef(false);
@@ -305,10 +306,25 @@ function ChatRow({
 
   const handleDelete = () => {
     setMenuOpen(false);
-    if (window.confirm(`Delete "${c.title}"? This can't be undone.`)) {
-      onDelete(c.id);
-    }
+    setConfirmingDelete(true);
   };
+
+  // Confirm dialog keyboard: Escape cancels, Enter confirms.
+  useEffect(() => {
+    if (!confirmingDelete) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setConfirmingDelete(false);
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        setConfirmingDelete(false);
+        onDelete(c.id);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [confirmingDelete, c.id, onDelete]);
 
   const startRename = () => {
     setMenuOpen(false);
@@ -384,6 +400,46 @@ function ChatRow({
       </div>
     ) : null;
 
+  const confirmDialog = confirmingDelete ? (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4"
+      onClick={() => setConfirmingDelete(false)}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        role="alertdialog"
+        aria-modal="true"
+        className="w-full max-w-sm border border-carnelian bg-paneldk p-5 shadow-2xl"
+      >
+        <div className="mb-2 font-display text-[18px] uppercase tracking-[0.08em] text-carnelian">
+          Delete dialogue
+        </div>
+        <p className="mb-5 font-read text-[14px] text-parch">
+          Delete <span className="text-marble">“{c.title}”</span>? This can’t be
+          undone.
+        </p>
+        <div className="flex items-center justify-end gap-2">
+          <button
+            autoFocus
+            onClick={() => setConfirmingDelete(false)}
+            className="border border-hair px-3 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-parch hover:border-hairlit hover:text-marble"
+          >
+            CANCEL
+          </button>
+          <button
+            onClick={() => {
+              setConfirmingDelete(false);
+              onDelete(c.id);
+            }}
+            className="border border-carnelian bg-carnelian/10 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-carnelian hover:bg-carnelian hover:text-void"
+          >
+            DELETE
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <div
       ref={ref}
@@ -438,6 +494,7 @@ function ChatRow({
       </span>
 
       {mounted && menu ? createPortal(menu, document.body) : null}
+      {mounted && confirmDialog ? createPortal(confirmDialog, document.body) : null}
     </div>
   );
 }

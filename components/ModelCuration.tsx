@@ -18,6 +18,9 @@ export function ModelCuration() {
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [manual, setManual] = useState<Record<string, string>>({});
+  // Per-provider search box — a provider like OpenRouter serves hundreds of
+  // models, so the list is filtered + scroll-capped rather than dumped inline.
+  const [filter, setFilter] = useState<Record<string, string>>({});
 
   const load = () =>
     fetch("/api/providers")
@@ -80,6 +83,11 @@ export function ModelCuration() {
     void saveModels(p, enabled);
   };
 
+  // Enable/disable every model in `rows` at once (respects the current filter is
+  // deliberately NOT applied — all/none act on the whole catalog).
+  const setAll = (p: PublicProvider, rows: string[], on: boolean) =>
+    void saveModels(p, on ? new Set(rows) : new Set());
+
   // Manually add a model id — for providers without a discovery endpoint
   // (e.g. Anthropic), or to pin one that isn't in the served catalog.
   const addManual = (p: PublicProvider) => {
@@ -112,6 +120,10 @@ export function ModelCuration() {
             ...catalog,
             ...p.models.filter((m) => !catalog.includes(m)),
           ];
+          const needle = (filter[p.id] ?? "").trim().toLowerCase();
+          const shownRows = needle
+            ? rows.filter((m) => m.toLowerCase().includes(needle))
+            : rows;
           return (
             <div key={p.id}>
               <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -124,19 +136,48 @@ export function ModelCuration() {
                 <span className="font-mono text-[11px] text-mutedlo">
                   · discovered {relTime(p.catalogUpdatedAt)}
                 </span>
-                {p.type !== "anthropic" && (
-                  <button
-                    onClick={() => discover(p.id)}
-                    disabled={busy === p.id}
-                    className="ml-auto border border-hair px-2.5 py-1 font-mono text-[10.5px] uppercase tracking-[0.16em] text-parch hover:border-lapis hover:text-lapis disabled:opacity-40"
-                  >
-                    {busy === p.id ? "…" : "DISCOVER"}
-                  </button>
-                )}
+                <div className="ml-auto flex items-center gap-1.5">
+                  {rows.length > 0 && (
+                    <>
+                      <button
+                        onClick={() => setAll(p, rows, true)}
+                        className="font-mono text-[10.5px] text-mutedlo hover:text-lapis"
+                      >
+                        all
+                      </button>
+                      <span className="text-mutedlo">·</span>
+                      <button
+                        onClick={() => setAll(p, rows, false)}
+                        className="font-mono text-[10.5px] text-mutedlo hover:text-lapis"
+                      >
+                        none
+                      </button>
+                    </>
+                  )}
+                  {p.type !== "anthropic" && (
+                    <button
+                      onClick={() => discover(p.id)}
+                      disabled={busy === p.id}
+                      className="ml-1.5 border border-hair px-2.5 py-1 font-mono text-[10.5px] uppercase tracking-[0.16em] text-parch hover:border-lapis hover:text-lapis disabled:opacity-40"
+                    >
+                      {busy === p.id ? "…" : "DISCOVER"}
+                    </button>
+                  )}
+                </div>
               </div>
+              {rows.length > 8 && (
+                <input
+                  value={filter[p.id] ?? ""}
+                  onChange={(e) =>
+                    setFilter((f) => ({ ...f, [p.id]: e.target.value }))
+                  }
+                  placeholder="search models…"
+                  className="mb-2 w-full border border-hairlit bg-void px-2.5 py-1.5 font-mono text-[12px] text-marble outline-none placeholder:text-mutedlo focus:border-gold"
+                />
+              )}
               {rows.length > 0 && (
-                <div className="mb-2 flex flex-col gap-1">
-                  {rows.map((m) => (
+                <div className="mb-2 flex max-h-[300px] flex-col gap-1 overflow-y-auto">
+                  {shownRows.map((m) => (
                     <label
                       key={m}
                       className="flex cursor-pointer items-center gap-2 font-mono text-[12px]"
@@ -152,6 +193,11 @@ export function ModelCuration() {
                       </span>
                     </label>
                   ))}
+                  {shownRows.length === 0 && (
+                    <p className="font-mono text-[11px] text-mutedlo">
+                      No models match “{filter[p.id]}”.
+                    </p>
+                  )}
                 </div>
               )}
               {rows.length === 0 && (

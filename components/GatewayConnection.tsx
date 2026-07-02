@@ -3,7 +3,7 @@
 // components/GatewayConnection.tsx
 // The Gateway is the single Hermes connection: the management plane (admin URL +
 // cookie auth) that powers the Command chamber, plus the inference (/v1)
-// endpoint used for chat. Lives in Settings → Connections. Secrets never reach
+// endpoint used for chat. Lives in Command → Gateway. Secrets never reach
 // the browser — credentials are POSTed to /api/hermes/login, the resulting
 // session cookie is what gets persisted.
 

@@ -20,9 +20,7 @@ import { honchoAgo, honchoFmtTime } from "@/components/HonchoDashboard";
 function StatusDot({ active }: { active: boolean }) {
   return (
     <span
-      className={`inline-block h-2 w-2 rounded-full ${
-        active ? "bg-emerald-400" : "bg-mutedlo"
-      }`}
+      className={`status-dot ${active ? "status-dot-malach" : "bg-mutedlo"}`}
     />
   );
 }
@@ -134,8 +132,8 @@ export function HonchoLogsTab({ workspace }: { workspace: string }) {
             ⌁ LIVE LOG
           </span>
           {autoRefresh && (
-            <span className="flex items-center gap-1.5 font-mono text-[10px] text-emerald-400">
-              <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+            <span className="flex items-center gap-1.5 font-mono text-[10px] text-malach">
+              <span className="status-dot status-dot-malach animate-pulse" />
               POLLING · {POLL_INTERVAL_MS / 1000}s
             </span>
           )}
@@ -276,7 +274,7 @@ function QueuePanel({
                       <div className="flex shrink-0 gap-3 font-mono text-[10px] text-mutedlo">
                         <span>
                           <span className="text-mutedlo">done</span>{" "}
-                          <span className="text-emerald-400">
+                          <span className="text-malach">
                             {s.completed_work_units}
                           </span>
                         </span>
@@ -321,7 +319,7 @@ function QueueStat({
 }) {
   const valueClass =
     tone === "done"
-      ? "text-emerald-400"
+      ? "text-malach"
       : tone === "busy"
         ? "text-gold"
         : tone === "warn"
@@ -408,7 +406,7 @@ function MessageRow({ entry }: { entry: IngestionEntry }) {
         <span className="font-mono text-[10px] text-mutedlo">
           {honchoAgo(m.created_at)}
         </span>
-        <span className="rounded border border-hair bg-panel px-1.5 py-0.5 font-mono text-[10px] text-gold">
+        <span className="border border-hair bg-panel px-1.5 py-0.5 font-mono text-[10px] text-gold">
           {m.peer_id}
         </span>
         <span className="font-mono text-[10px] text-mutedlo">in</span>

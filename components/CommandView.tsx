@@ -1,17 +1,18 @@
 // components/CommandView.tsx
 // The Command chamber — Hermes-Agent-only control surface over the management
-// API. The Gateway connection itself is configured in Settings → Connections;
-// here we drive the agent (models now; sessions, cron, memory, voice, channels
-// and keys to follow). Every request is proxied server-side.
+// API. The Gateway connection itself is configured in the Gateway subsection;
+// the rest drives the agent (models now; cron, voice, channels and keys to
+// follow). Every request is proxied server-side.
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { HermesModelCatalog } from "@/components/HermesModelCatalog";
 import { HermesModelFilter } from "@/components/HermesModelFilter";
 import { ConnectorsView } from "@/components/ConnectorsView";
 import { SessionsView } from "@/components/SessionsView";
 import { HonchoDashboard } from "@/components/HonchoDashboard";
+import { GatewayConnection } from "@/components/GatewayConnection";
+import { ProvidersView } from "@/components/ProvidersView";
 import { CHAMBER_SUBSECTIONS } from "@/components/chambers";
 import {
   getConnection,
@@ -22,7 +23,13 @@ import {
   type ModelOptions,
 } from "@/lib/hermesClient";
 
-export function CommandView({ section }: { section: string }) {
+export function CommandView({
+  section,
+  onNavigate,
+}: {
+  section: string;
+  onNavigate: (section: string) => void;
+}) {
   const [conn, setConn] = useState<PublicHermesConnection | null>(null);
   const [connected, setConnected] = useState(false);
   const [status, setStatus] = useState("");
@@ -59,7 +66,7 @@ export function CommandView({ section }: { section: string }) {
         setConnected(true);
         setStatus(
           t.authenticated === false
-            ? `⚠️ Reachable but NOT authenticated — fix the Gateway token in Settings.`
+            ? `⚠️ Reachable but NOT authenticated — fix the token in the Gateway tab.`
             : "",
         );
         await refreshLive();
@@ -118,17 +125,21 @@ export function CommandView({ section }: { section: string }) {
         </div>
       )}
 
-      {section === "connectors" ? (
+      {section === "gateway" ? (
+        <GatewayConnection />
+      ) : section === "providers" ? (
+        <ProvidersView />
+      ) : section === "connectors" ? (
         <ConnectorsView />
       ) : notConfigured ? (
         <div className="border border-hair bg-paneldk p-4 font-mono text-[12px] text-parch">
           The Gateway isn&apos;t connected. Set the management URL + token in{" "}
-          <Link
-            href="/settings"
+          <button
+            onClick={() => onNavigate("gateway")}
             className="text-gold underline underline-offset-2 hover:text-goldbri"
           >
-            Settings → Connections
-          </Link>{" "}
+            Command → Gateway
+          </button>{" "}
           to control Hermes.
         </div>
       ) : section === "sessions" ? (

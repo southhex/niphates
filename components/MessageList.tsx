@@ -26,33 +26,9 @@ export function MessageList({
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, streaming]);
 
+  // The empty-conversation hero (and the composer beneath it) is rendered by
+  // page.tsx, not here — MessageList only draws once there's a visible message.
   const visible = messages.filter((m) => m.role !== "system");
-
-  if (visible.length === 0) {
-    return (
-      <div className="flex h-full items-center justify-center px-6 text-center">
-        <div className="max-w-md">
-          <div className="mb-6 font-mono text-[11px] uppercase tracking-[0.34em] text-lapis">
-            ❯ THE MIND IS ITS OWN PLACE
-          </div>
-          <h1 className="mb-4 font-display text-[46px] font-semibold uppercase tracking-[0.1em] text-marble">
-            NIPHATES
-          </h1>
-          <div
-            className="mx-auto mb-5 h-px w-48"
-            style={{
-              background:
-                "linear-gradient(to right, transparent, var(--gold), transparent)",
-            }}
-          />
-          <p className="font-read italic text-[16px] text-parch">
-            Summon the agent. Hermes is ready out of the box — add more
-            providers in Settings.
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="mx-auto flex w-full max-w-[820px] flex-col gap-4 px-5 pt-[18px] pb-6">

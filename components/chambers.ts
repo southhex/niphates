@@ -34,6 +34,8 @@ export const CHAMBER_SUBSECTIONS: Partial<Record<ChamberId, SubsectionDef[]>> = 
     { id: "sanctum", label: "Sanctum" },
   ],
   command: [
+    { id: "gateway", label: "Gateway" },
+    { id: "providers", label: "Providers" },
     { id: "connectors", label: "Connectors" },
     { id: "sessions", label: "Sessions" },
     { id: "models", label: "Models" },

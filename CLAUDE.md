@@ -16,7 +16,7 @@ npm install
 npm run dev          # next dev — http://localhost:3000 (dev never registers the SW)
 npm run build        # production build → .next
 npm run start        # next start on :3000 (SW registers only over HTTPS/localhost — see below)
-npm run lint         # next lint (ESLint not yet configured — prompts to set up on first run)
+npm run lint         # next lint (next/core-web-vitals via .eslintrc.json)
 npm run test         # vitest run (one-shot)
 npm run test:watch
 npm run gen-icons     # regenerate PWA icons from scripts/gen-icons.mjs (uses sharp)
@@ -166,7 +166,7 @@ view components (e.g `CommandView`, `LibraryView`) route by subsection string.
 | Studio | — | placeholder | Not yet built |
 | Library | Sanctum | `LibraryView` → `SanctumView` | Journaling |
 | Council | — | placeholder | Not yet built |
-| Command | Connectors, Sessions, Models, Cron, **Memory**, Voice, Channels, Keys | `CommandView` | Hermes control |
+| Command | **Gateway**, **Providers**, Connectors, Sessions, Models, Cron, **Memory**, Voice, Channels, Keys | `CommandView` | Hermes control + connections |
 
 > The Command chamber now includes a built **Memory** subsection (not a placeholder) that
 > surfaces a self-hosted [Honcho](https://honcho.dev) dashboard. See **Honcho dashboard**
@@ -174,7 +174,7 @@ view components (e.g `CommandView`, `LibraryView`) route by subsection string.
 
 `components/chambers.ts` holds the metadata (chamber list + per-chamber subsections) and
 `firstSubsection(chamber)`. Selecting a chamber resolves `subsection` to its first subsection
-(`onSelectChamber` in `page.tsx`), so Library lands on Sanctum / Command on Connectors rather
+(`onSelectChamber` in `page.tsx`), so Library lands on Sanctum / Command on Gateway rather
 than a stale or placeholder tab; chambers with no subsections (Dialogue, not-yet-built ones)
 leave `subsection` untouched. `subsection` is a single shared state across chambers.
 `components/ChamberPlaceholder.tsx` renders the generic "not yet built" state.
@@ -233,14 +233,18 @@ Stop while streaming), the `+` dropping to the bottom row when stacked. `zoom: 0
 (`pointer-events-none` wrapper, `pointer-events-auto` children) so they reserve no vertical
 space and the pane fills full height. The scroll pane has `pt-[calc(3.5rem+safe-area)]` so
 first-load content clears the icons; the drawer/settings icons sit on a frosted
-`rgba(8,7,10,0.5)` + `backdrop-blur-md` chip to stand off content scrolling under them. The
-**provider picker renders in the Dialogue chamber only**; the settings gear is always shown.
+`bg-void/50` + `backdrop-blur-md` chip to stand off content scrolling under them. The
+**provider picker renders in the Dialogue chamber only**; the settings gear is always shown
+and jumps to Command → Gateway (there is no separate settings page anymore).
 
 **Corners**: the old global `* { border-radius: 0 !important }` reset is gone — sharp is
 still the default, but elements opt into rounding with normal `rounded-*` classes (composer
-box, operator/model pills, command picker, model popout). Since `--void`/`--gold` are bare
-hexes, `bg-*/<opacity>` modifiers silently no-op — use explicit `rgba()` / `color-mix` for
-translucency (the same footgun as Sanctum's gold tints).
+box, operator/model pills, command picker, model popout). Status dots and badges stay square.
+
+**Color opacity**: Tailwind colors are defined as `rgb(from var(--x) r g b / <alpha-value>)`
+(`tailwind.config.ts`), so `bg-gold/10`, `border-gold/40` etc. work normally. Inline styles
+can't use Tailwind modifiers — use `color-mix(in srgb, var(--gold) N%, transparent)` there,
+never hardcoded `rgba()` from one theme's palette (breaks the dormant marble light theme).
 
 ### Honcho dashboard (`Command → Memory`)
 
@@ -324,9 +328,9 @@ memory) and unwrap an already-wrapped selection.
   (one cell per day from the first dated entry to today; empty for days with no entry; tinted
   by `wordCount/goal`), and a gold tint + `✦` on entries that met the goal. `countEntryWords`
   (server) mirrors the client `countWords` so list/heatmap and live counts agree. Both strip
-  frontmatter and markdown punctuation. **Gold tints use inline `color-mix`, NOT Tailwind
-  `bg-gold/<opacity>`** — `--gold` is a bare hex with no `<alpha-value>` channel in the
-  config, so opacity modifiers silently no-op (a known footgun here).
+  frontmatter and markdown punctuation. Gold tints on inline styles use `color-mix`
+  (Tailwind opacity modifiers now work in classes — see "Color opacity" above — but
+  inline `style` values still can't use them).
 - **Word-count cache** (`lib/sanctum.ts`, `data/sanctum-wordcounts.json`, git-ignored): since
   `listEntries` now reads every file to count words and the heatmap spans every day, counts
   are cached per file keyed by `(connector folder name)`, validated against `(mtimeMs, size)`.
@@ -344,9 +348,13 @@ memory) and unwrap an already-wrapped selection.
   `Mod-Shift-1/2/3` headings, `Mod-Shift-.` blockquote, `Mod-l` list, `Mod-o` ordered list,
   `Mod-Shift-s` strikethrough
 
-`app/page.tsx` (chat), `app/settings/page.tsx` (provider management), `app/hermes/page.tsx`
-(Hermes Control: connection config, live model switcher, stats). Components in
-`components/`. `RegisterSW.tsx` registers `public/sw.js` — production builds only.
+`app/page.tsx` is the single page — chat plus all chambers. The old `/settings` page is
+gone: the Gateway connection lives in Command → Gateway (`GatewayConnection.tsx`) and
+direct-provider management in Command → Providers (`ProvidersView.tsx`); `/hermes`
+redirects to `/`. The theme is fixed to obsidian — the marble light theme's tokens remain
+in `globals.css` but nothing sets `data-theme="marble"` (the Appearance switcher was
+removed). Components in `components/`. `RegisterSW.tsx` registers `public/sw.js` —
+production builds only.
 
 ## Conventions
 

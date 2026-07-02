@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Cinzel, IBM_Plex_Mono, Spectral } from "next/font/google";
 import "./globals.css";
 import { RegisterSW } from "@/components/RegisterSW";
+import { ChunkReload } from "@/components/ChunkReload";
 
 const cinzel = Cinzel({
   subsets: ["latin"],
@@ -73,16 +74,12 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${cinzel.variable} ${ibmPlexMono.variable} ${spectral.variable}`}
     >
-      <head>
-        {/* Reads saved theme before first paint to prevent flash */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){var t=localStorage.getItem('niphates-theme')||'obsidian';document.documentElement.setAttribute('data-theme',t);})();`,
-          }}
-        />
-      </head>
+      {/* Theme is fixed to obsidian (data-theme above). The marble light theme
+          still exists in globals.css but has no switcher — re-add a pre-paint
+          localStorage script here if a theme toggle ever returns. */}
       <body>
         {children}
+        <ChunkReload />
         <RegisterSW />
       </body>
     </html>

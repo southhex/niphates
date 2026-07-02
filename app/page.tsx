@@ -2,8 +2,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
-import { PanelLeft, Settings as SettingsIcon } from "lucide-react";
+import { PanelLeft } from "lucide-react";
 import { Sidebar } from "@/components/Sidebar";
 import { MessageList } from "@/components/MessageList";
 import { Composer, type SlashCommandSpec } from "@/components/Composer";
@@ -40,7 +39,7 @@ export default function Home() {
   const [activeChamber, setActiveChamber] = useState<ChamberId>("dialogue");
   // The active subsection (main tab) of the current chamber, shown in the
   // sidebar. Only Command has subsections today; defaults to its built tab.
-  const [subsection, setSubsection] = useState<string>("connectors");
+  const [subsection, setSubsection] = useState<string>("gateway");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [pendingApproval, setPendingApproval] = useState<PendingApproval | null>(null);
   const streaming = streamingId !== null;
@@ -201,10 +200,9 @@ export default function Home() {
       next.delete(id);
       return next;
     });
-    if (activeId === id) {
-      const next = list.find((c) => !c.archived) ?? list[0];
-      setActiveId(next?.id ?? null);
-    }
+    // Deleting the open dialogue returns to the empty home view (same as app
+    // launch / Escape), rather than jumping into an adjacent conversation.
+    if (activeId === id) setActiveId(null);
   };
 
   const setArchived = (id: string, archived: boolean) => {
@@ -524,6 +522,27 @@ export default function Home() {
   };
 
   const noProviders = providers.length === 0;
+  // Empty dialogue = no open conversation, or one with no visible messages yet.
+  // Drives the hero-with-inline-composer layout; the composer drops to the
+  // bottom once the first message lands.
+  const dialogueEmpty =
+    !active ||
+    active.messages.filter((m) => m.role !== "system").length === 0;
+
+  const composer = (
+    <Composer
+      disabled={noProviders || (streaming && active?.id !== streamingId)}
+      streaming={streaming && active?.id === streamingId}
+      onSend={handleSend}
+      onStop={handleStop}
+      commands={slashCommands}
+      onCommand={runCommand}
+      models={composerModels}
+      model={model}
+      onModelChange={onModelChange}
+      gatewayProfile={isGateway ? "default" : undefined}
+    />
+  );
 
   return (
     <div className="fixed inset-0 flex overflow-hidden">
@@ -575,7 +594,7 @@ export default function Home() {
         <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-center gap-2 pb-2 pl-[calc(0.75rem+env(safe-area-inset-left))] pr-[calc(0.75rem+env(safe-area-inset-right))] pt-[calc(0.5rem+env(safe-area-inset-top))]">
           {!sidebarOpen && (
             <button
-              className="pointer-events-auto -ml-1 flex h-9 w-9 items-center justify-center rounded-[6px] bg-[rgba(8,7,10,0.5)] text-parch backdrop-blur-md hover:text-marble"
+              className="pointer-events-auto -ml-1 flex h-9 w-9 items-center justify-center rounded-[6px] bg-void/50 text-parch backdrop-blur-md hover:text-marble"
               onClick={() => setSidebarOpen(true)}
               aria-label="Show sidebar"
             >
@@ -598,15 +617,6 @@ export default function Home() {
                 />
               </div>
             )}
-
-            {/* Settings gear — sole entry point to Settings */}
-            <Link
-              href="/settings"
-              aria-label="Settings"
-              className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-[6px] bg-[rgba(8,7,10,0.5)] text-parch backdrop-blur-md hover:text-marble"
-            >
-              <SettingsIcon size={18} />
-            </Link>
           </div>
         </div>
 
@@ -623,15 +633,40 @@ export default function Home() {
                   </div>
                   <p className="font-mono text-[13px] text-parch">
                     No providers configured. Open{" "}
-                    <Link
-                      href="/settings"
+                    <button
+                      onClick={() => {
+                        setActiveChamber("command");
+                        setSubsection("gateway");
+                      }}
                       className="text-gold underline underline-offset-2 hover:text-goldbri"
                     >
-                      Settings
-                    </Link>{" "}
+                      Command → Gateway
+                    </button>{" "}
                     to connect Hermes Agent or another API.
                   </p>
                 </div>
+              </div>
+            ) : dialogueEmpty ? (
+              // Empty dialogue: hero with the composer sitting just beneath the
+              // gold divider. The whole group is vertically centered; the
+              // composer drops to the bottom once the first message is sent.
+              <div className="flex h-full flex-col items-center justify-center">
+                <div className="w-full max-w-[820px] px-6 text-center">
+                  <div className="mb-6 font-mono text-[11px] uppercase tracking-[0.34em] text-lapis">
+                    ❯ THE MIND IS ITS OWN PLACE
+                  </div>
+                  <h1 className="mb-4 font-display text-[46px] font-semibold uppercase tracking-[0.1em] text-marble">
+                    NIPHATES
+                  </h1>
+                  <div
+                    className="mx-auto h-px w-48"
+                    style={{
+                      background:
+                        "linear-gradient(to right, transparent, var(--gold), transparent)",
+                    }}
+                  />
+                </div>
+                <div className="mt-4 w-full">{composer}</div>
               </div>
             ) : (
               <MessageList
@@ -642,7 +677,7 @@ export default function Home() {
           ) : activeChamber === "library" ? (
             <LibraryView section={subsection} />
           ) : activeChamber === "command" ? (
-            <CommandView section={subsection} />
+            <CommandView section={subsection} onNavigate={setSubsection} />
           ) : (
             <ChamberPlaceholder chamber={activeChamber} />
           )}
@@ -663,21 +698,10 @@ export default function Home() {
           />
         )}
 
-        {/* Composer — Dialogue chamber only */}
-        {activeChamber === "dialogue" && (
-          <Composer
-            disabled={noProviders || (streaming && active?.id !== streamingId)}
-            streaming={streaming && active?.id === streamingId}
-            onSend={handleSend}
-            onStop={handleStop}
-            commands={slashCommands}
-            onCommand={runCommand}
-            models={composerModels}
-            model={model}
-            onModelChange={onModelChange}
-            gatewayProfile={isGateway ? "default" : undefined}
-          />
-        )}
+        {/* Composer pinned to the bottom — Dialogue chamber with an active
+            conversation. While the dialogue is empty it renders inline beneath
+            the hero divider above instead. */}
+        {activeChamber === "dialogue" && !noProviders && !dialogueEmpty && composer}
       </main>
     </div>
   );

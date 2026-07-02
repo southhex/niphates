@@ -232,9 +232,7 @@ export function Composer({
               rows={1}
               style={{ minHeight: 20 }}
               placeholder={
-                disabled
-                  ? "Add a provider in Settings first…"
-                  : "summon the agent… or /command"
+                disabled ? "Add a provider first…" : "What's on your mind?"
               }
               onChange={(e) => {
                 setValue(e.target.value);

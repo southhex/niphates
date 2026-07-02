@@ -7,29 +7,21 @@ const config: Config = {
   ],
   theme: {
     extend: {
-      colors: {
-        void:      "var(--void)",
-        ground:    "var(--ground)",
-        paneldk:   "var(--paneldk)",
-        panel:     "var(--panel)",
-        panel2:    "var(--panel2)",
-        hair:      "var(--hair)",
-        hairlit:   "var(--hairlit)",
-        marble:    "var(--marble)",
-        parch:     "var(--parch)",
-        parchdk:   "var(--parchdk)",
-        muted:     "var(--muted)",
-        mutedlo:   "var(--mutedlo)",
-        gold:      "var(--gold)",
-        goldbri:   "var(--goldbri)",
-        goldink:   "var(--goldink)",
-        lapis:     "var(--lapis)",
-        malach:    "var(--malach)",
-        carnelian: "var(--carnelian)",
-        porphyry:  "var(--porphyry)",
-        porphlbl:  "var(--porphlbl)",
-        agentbody: "var(--agentbody)",
-      },
+      // CSS relative color syntax gives every token a real alpha channel, so
+      // opacity modifiers (bg-gold/10, border-gold/40, …) work — with a plain
+      // `var(--gold)` value Tailwind can't inject alpha and the modifier
+      // silently no-ops.
+      colors: Object.fromEntries(
+        [
+          "void", "ground", "paneldk", "panel", "panel2", "hair", "hairlit",
+          "marble", "parch", "parchdk", "muted", "mutedlo", "gold", "goldbri",
+          "goldink", "lapis", "malach", "carnelian", "porphyry", "porphlbl",
+          "agentbody",
+        ].map((name) => [
+          name,
+          `rgb(from var(--${name}) r g b / <alpha-value>)`,
+        ]),
+      ),
       fontFamily: {
         sans:    ["var(--font-mono)", "ui-monospace", "monospace"],
         display: ["var(--font-cinzel)", "serif"],

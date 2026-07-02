@@ -9,7 +9,7 @@ export function ChamberPlaceholder({ chamber }: { chamber: ChamberId }) {
     <div className="flex h-full flex-col items-center justify-center px-6 text-center">
       <div
         className="mb-[14px] font-display text-[13px] tracking-[0.34em] text-gold"
-        style={{ textShadow: "0 0 10px rgba(201,162,75,0.5)" }}
+        style={{ textShadow: "0 0 10px color-mix(in srgb, var(--gold) 50%, transparent)" }}
       >
         {def.numeral}
       </div>

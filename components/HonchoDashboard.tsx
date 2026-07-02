@@ -67,9 +67,7 @@ function Stat({ label, value }: { label: string; value: string | number }) {
 function StatusDot({ active }: { active: boolean }) {
   return (
     <span
-      className={`inline-block h-2 w-2 rounded-full ${
-        active ? "bg-emerald-400" : "bg-mutedlo"
-      }`}
+      className={`status-dot ${active ? "status-dot-malach" : "bg-mutedlo"}`}
     />
   );
 }
