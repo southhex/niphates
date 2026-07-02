@@ -19,6 +19,8 @@ next-env.d.ts
 /data/conversations.json
 # derived word-count cache (rebuilt on demand)
 /data/sanctum-wordcounts.json
+# connector resources (vault paths etc. are machine-local)
+/data/connectors.json
 .env
 .env.local
 .env*.local
